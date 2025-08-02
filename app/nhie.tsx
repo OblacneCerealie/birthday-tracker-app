@@ -1,10 +1,11 @@
-import React, { useState } from "react";
-import { View, Text, StyleSheet, Pressable, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
+import React, { useState } from "react";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 export default function NHIEGame() {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [score, setScore] = useState(0);
+  const [isInfiniteMode, setIsInfiniteMode] = useState(false);
   const router = useRouter();
 
   const questions = [
@@ -35,17 +36,28 @@ export default function NHIEGame() {
       setScore(score + 1);
     }
     
-    if (currentQuestion < questions.length - 1) {
-      setCurrentQuestion(currentQuestion + 1);
+    if (isInfiniteMode) {
+      // In infinite mode, cycle through questions indefinitely
+      setCurrentQuestion((currentQuestion + 1) % questions.length);
     } else {
-      // Game finished
-      setCurrentQuestion(0);
+      // Normal mode - end game after all questions
+      if (currentQuestion < questions.length - 1) {
+        setCurrentQuestion(currentQuestion + 1);
+      } else {
+        // Game finished
+        setCurrentQuestion(0);
+      }
     }
   };
 
   const resetGame = () => {
     setCurrentQuestion(0);
     setScore(0);
+  };
+
+  const toggleInfiniteMode = () => {
+    setIsInfiniteMode(!isInfiniteMode);
+    resetGame();
   };
 
   return (
@@ -56,7 +68,10 @@ export default function NHIEGame() {
         <View style={styles.gameContainer}>
           <Text style={styles.score}>Score: {score}</Text>
           <Text style={styles.questionNumber}>
-            Question {currentQuestion + 1} of {questions.length}
+            {isInfiniteMode 
+              ? `Question ${currentQuestion + 1}` 
+              : `Question ${currentQuestion + 1} of ${questions.length}`
+            }
           </Text>
           
           <View style={styles.questionCard}>
@@ -99,6 +114,16 @@ export default function NHIEGame() {
       
       <Pressable style={styles.backButton} onPress={() => router.back()}>
         <Text style={styles.backButtonText}>← Back to Home</Text>
+      </Pressable>
+
+      {/* Infinite Mode Toggle Button */}
+      <Pressable 
+        style={[styles.infiniteButton, isInfiniteMode && styles.infiniteButtonActive]} 
+        onPress={toggleInfiniteMode}
+      >
+        <Text style={styles.infiniteButtonText}>
+          {isInfiniteMode ? "🔄 Go Back to Normal Mode" : "♾️ Infinite Mode"}
+        </Text>
       </Pressable>
     </ScrollView>
   );
@@ -223,5 +248,28 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#333",
     fontWeight: "500",
+  },
+  infiniteButton: {
+    backgroundColor: "#FFD700",
+    padding: 15,
+    borderRadius: 10,
+    alignItems: "center",
+    marginTop: 15,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  infiniteButtonActive: {
+    backgroundColor: "#FFA500",
+  },
+  infiniteButtonText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#333",
   },
 }); 
