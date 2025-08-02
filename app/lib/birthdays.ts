@@ -142,7 +142,7 @@ async function scheduleBirthdayNotification(birthday: Birthday) {
       },
       trigger: {
         date: notificationDate,
-        type: 'date',
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
       },
     });
     
