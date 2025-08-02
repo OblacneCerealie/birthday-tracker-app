@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Notifications from "expo-notifications";
 
 export type Birthday = {
   name: string;
@@ -107,6 +108,76 @@ export function getUpcomingBirthdays(): {
     .sort((a, b) => a.daysAway - b.daysAway);
 }
 
+// Schedule notification for a birthday
+async function scheduleBirthdayNotification(birthday: Birthday) {
+  try {
+    // Parse the birthday date
+    const [year, month, day] = birthday.date.split("-").map(Number);
+    
+    // Create notification date for this year at 9 AM
+    const notificationDate = new Date();
+    notificationDate.setFullYear(new Date().getFullYear());
+    notificationDate.setMonth(month - 1);
+    notificationDate.setDate(day);
+    notificationDate.setHours(9, 0, 0, 0); // 9 AM
+    
+    // If the birthday has already passed this year, schedule for next year
+    if (notificationDate < new Date()) {
+      notificationDate.setFullYear(notificationDate.getFullYear() + 1);
+    }
+    
+    // Create a unique identifier for this notification
+    const notificationId = `birthday_${birthday.name}_${birthday.date}`;
+    
+    // Cancel any existing notification for this birthday
+    await Notifications.cancelScheduledNotificationAsync(notificationId);
+    
+    // Schedule the new notification
+    await Notifications.scheduleNotificationAsync({
+      identifier: notificationId,
+      content: {
+        title: "🎂 Birthday Alert!",
+        body: `${birthday.name} has a birthday today!`,
+        sound: 'default',
+      },
+      trigger: {
+        date: notificationDate,
+        type: 'date',
+      },
+    });
+    
+    console.log(`Scheduled notification for ${birthday.name} on ${notificationDate.toDateString()}`);
+  } catch (error) {
+    console.error(`Failed to schedule notification for ${birthday.name}:`, error);
+  }
+}
+
+// Schedule notifications for all birthdays
+export async function scheduleAllBirthdayNotifications() {
+  try {
+    // Request notification permissions
+    const settings = await Notifications.getPermissionsAsync();
+    if (!settings.granted) {
+      const permission = await Notifications.requestPermissionsAsync();
+      if (!permission.granted) {
+        console.log('Notification permission not granted');
+        return;
+      }
+    }
+    
+    // Schedule notifications for Sebastian's birthdays
+    birthdays.forEach(scheduleBirthdayNotification);
+    
+    // Schedule notifications for user birthdays
+    const userBirthdays = await getUserBirthdays();
+    userBirthdays.forEach(scheduleBirthdayNotification);
+    
+    console.log('All birthday notifications scheduled successfully');
+  } catch (error) {
+    console.error('Failed to schedule birthday notifications:', error);
+  }
+}
+
 // For others (editable)
 export async function getUserBirthdays(): Promise<Birthday[]> {
   const raw = await AsyncStorage.getItem(STORAGE_KEY);
@@ -125,6 +196,9 @@ export async function saveBirthday(birthday: Birthday) {
   updated.sort((a, b) => a.name.localeCompare(b.name));
 
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  
+  // Schedule notification for the new birthday
+  await scheduleBirthdayNotification(birthday);
 }
 
 

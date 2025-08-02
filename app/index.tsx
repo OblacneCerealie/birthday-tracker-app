@@ -8,6 +8,7 @@ import {
   getUpcomingBirthdays,
   getUpcomingUserBirthdays,
   getUserBirthdays,
+  scheduleAllBirthdayNotifications,
 } from "./lib/birthdays";
 
 export default function HomeScreen() {
@@ -92,6 +93,8 @@ export default function HomeScreen() {
   // Load data on initial mount
   useEffect(() => {
     loadData();
+    // Schedule all birthday notifications
+    scheduleAllBirthdayNotifications();
   }, [loadData]);
 
   // Refresh data when screen comes into focus (e.g., when navigating back)
