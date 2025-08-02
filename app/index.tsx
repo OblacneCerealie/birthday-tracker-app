@@ -74,9 +74,19 @@ export default function HomeScreen() {
     }
 
     await requestNotificationPermission();
-    todayBdays.forEach((b) => {
-      sendBirthdayNotification(b.name);
-    });
+    
+    // Check if we've already sent notifications today
+    const today = new Date().toDateString();
+    const lastNotificationDate = await AsyncStorage.getItem('lastNotificationDate');
+    
+    // Only send notifications if we haven't sent them today
+    if (lastNotificationDate !== today) {
+      todayBdays.forEach((b) => {
+        sendBirthdayNotification(b.name);
+      });
+      // Mark that we've sent notifications today
+      await AsyncStorage.setItem('lastNotificationDate', today);
+    }
   }, [router, bannerAnimation]);
 
   // Load data on initial mount
