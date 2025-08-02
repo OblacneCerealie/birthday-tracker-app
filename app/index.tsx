@@ -1,8 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
-import { useRouter, useFocusEffect } from "expo-router";
-import React, { useEffect, useState, useCallback, useRef } from "react";
-import { Pressable, StyleSheet, Text, View, Animated } from "react-native";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 import ConfettiCannon from "react-native-confetti-cannon";
 import {
   getUpcomingBirthdays,
@@ -263,7 +263,7 @@ const styles = StyleSheet.create({
     bottom: 20,
     left: 20,
     right: 20,
-    backgroundColor: '#FF6B6B',
+    backgroundColor: '#E3F2FD', // Soft light blue background
     padding: 15,
     borderRadius: 15,
     shadowColor: '#000',
@@ -278,13 +278,13 @@ const styles = StyleSheet.create({
   celebrationText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#1976D2', // Dark blue text for good contrast on light blue
     textAlign: 'center',
     marginBottom: 5,
   },
   celebrationSubtext: {
     fontSize: 14,
-    color: '#fff',
+    color: '#1976D2', // Dark blue text for good contrast on light blue
     textAlign: 'center',
     opacity: 0.9,
   },
