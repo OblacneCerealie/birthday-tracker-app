@@ -74,9 +74,18 @@ function getNextOccurrence(dateStr: string): Date {
   const today = new Date();
   const [year, month, day] = dateStr.split("-").map(Number);
   const thisYear = new Date(today.getFullYear(), month - 1, day);
-  return thisYear >= today
-    ? thisYear
-    : new Date(today.getFullYear() + 1, month - 1, day);
+  
+  // Reset time to start of day for accurate comparison
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const thisYearStart = new Date(thisYear.getFullYear(), thisYear.getMonth(), thisYear.getDate());
+  
+  // If birthday is today or in the future this year, return this year's date
+  if (thisYearStart >= todayStart) {
+    return thisYear;
+  }
+  
+  // Otherwise, return next year's date
+  return new Date(today.getFullYear() + 1, month - 1, day);
 }
 
 // For Sebastian (read-only)
@@ -86,10 +95,13 @@ export function getUpcomingBirthdays(): {
   daysAway: number;
 }[] {
   const today = new Date();
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  
   return birthdays
     .map((b) => {
       const next = getNextOccurrence(b.date);
-      const diff = Math.ceil((+next - +today) / (1000 * 60 * 60 * 24));
+      const nextStart = new Date(next.getFullYear(), next.getMonth(), next.getDate());
+      const diff = Math.round((+nextStart - +todayStart) / (1000 * 60 * 60 * 24));
       return { ...b, date: next.toDateString(), daysAway: diff };
     })
     .sort((a, b) => a.daysAway - b.daysAway);
@@ -118,10 +130,13 @@ export async function saveBirthday(birthday: Birthday) {
 
 export function getUpcomingUserBirthdays(birthdays: Birthday[]) {
   const today = new Date();
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  
   return birthdays
     .map((b) => {
       const next = getNextOccurrence(b.date);
-      const diff = Math.ceil((+next - +today) / (1000 * 60 * 60 * 24));
+      const nextStart = new Date(next.getFullYear(), next.getMonth(), next.getDate());
+      const diff = Math.round((+nextStart - +todayStart) / (1000 * 60 * 60 * 24));
       return { ...b, date: next.toDateString(), daysAway: diff };
     })
     .sort((a, b) => a.daysAway - b.daysAway);
