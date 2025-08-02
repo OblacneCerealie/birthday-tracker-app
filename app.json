@@ -37,6 +37,19 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "332d7afc-8fbb-4be3-a809-e35d9d060897"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/332d7afc-8fbb-4be3-a809-e35d9d060897"
+    },
+    "owner": "sebkom"
   }
 }
