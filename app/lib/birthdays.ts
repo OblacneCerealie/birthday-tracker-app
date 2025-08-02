@@ -184,6 +184,12 @@ export async function getUserBirthdays(): Promise<Birthday[]> {
   return raw ? JSON.parse(raw) : [];
 }
 
+// For Sebastian's personal birthdays (separate storage)
+export async function getSebastianBirthdays(): Promise<Birthday[]> {
+  const raw = await AsyncStorage.getItem("sebastianBirthdays");
+  return raw ? JSON.parse(raw) : [];
+}
+
 export async function saveBirthday(birthday: Birthday) {
   if (/\d/.test(birthday.name)) {
     throw new Error("Name cannot contain numbers.");
@@ -196,6 +202,24 @@ export async function saveBirthday(birthday: Birthday) {
   updated.sort((a, b) => a.name.localeCompare(b.name));
 
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  
+  // Schedule notification for the new birthday
+  await scheduleBirthdayNotification(birthday);
+}
+
+// Save birthday to Sebastian's personal list
+export async function saveSebastianBirthday(birthday: Birthday) {
+  if (/\d/.test(birthday.name)) {
+    throw new Error("Name cannot contain numbers.");
+  }
+
+  const current = await getSebastianBirthdays();
+  const updated = [...current, birthday];
+
+  // Sort alphabetically by name
+  updated.sort((a, b) => a.name.localeCompare(b.name));
+
+  await AsyncStorage.setItem("sebastianBirthdays", JSON.stringify(updated));
   
   // Schedule notification for the new birthday
   await scheduleBirthdayNotification(birthday);

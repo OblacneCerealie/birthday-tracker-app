@@ -5,10 +5,11 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 import ConfettiCannon from "react-native-confetti-cannon";
 import {
-  getUpcomingBirthdays,
-  getUpcomingUserBirthdays,
-  getUserBirthdays,
-  scheduleAllBirthdayNotifications,
+    getSebastianBirthdays,
+    getUpcomingBirthdays,
+    getUpcomingUserBirthdays,
+    getUserBirthdays,
+    scheduleAllBirthdayNotifications,
 } from "./lib/birthdays";
 
 export default function HomeScreen() {
@@ -35,9 +36,22 @@ export default function HomeScreen() {
     let todayBdays = [];
 
     if (isSebastian) {
-      const upcoming = getUpcomingBirthdays();
-      setBirthdays(upcoming);
-      todayBdays = upcoming.filter((b) => b.daysAway === 0);
+      // Sebastian gets both their personal birthdays and the read-only list
+      const sebastianPersonalBdays = await getSebastianBirthdays();
+      const sebastianPersonalUpcoming = getUpcomingUserBirthdays(sebastianPersonalBdays);
+      const readOnlyUpcoming = getUpcomingBirthdays();
+      
+      // Remove duplicates by checking names and dates
+      const uniqueSebastianUpcoming = sebastianPersonalUpcoming.filter(userBday => 
+        !readOnlyUpcoming.some(readOnlyBday => 
+          readOnlyBday.name === userBday.name && readOnlyBday.date === userBday.date
+        )
+      );
+      
+      // Combine both lists and sort by days away
+      const combined = [...uniqueSebastianUpcoming, ...readOnlyUpcoming].sort((a, b) => a.daysAway - b.daysAway);
+      setBirthdays(combined);
+      todayBdays = combined.filter((b) => b.daysAway === 0);
     } else {
       const userBdays = await getUserBirthdays();
       const upcoming = getUpcomingUserBirthdays(userBdays);

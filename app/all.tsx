@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   Alert,
@@ -14,15 +15,15 @@ import {
   View,
 } from "react-native";
 import {
+  getSebastianBirthdays,
   getUserBirthdays,
   saveBirthday,
+  saveSebastianBirthday,
   birthdays as sebastianBirthdays,
 } from "./lib/birthdays";
 
 type Birthday = { name: string; date: string };
 type GroupedBirthdays = { [letter: string]: Birthday[] };
-
-const STORAGE_KEY = "userBirthdays";
 
 export default function AllBirthdays() {
   const [birthdays, setBirthdays] = useState<Birthday[]>([]);
@@ -32,6 +33,7 @@ export default function AllBirthdays() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const router = useRouter();
 
   useEffect(() => {
     const load = async () => {
@@ -39,11 +41,31 @@ export default function AllBirthdays() {
 
       if (userName?.toLowerCase() === "sebastian") {
         setIsSebastian(true);
-        setBirthdays([...sebastianBirthdays]);
+        // Sebastian gets both their personal birthdays and the read-only list
+        const sebastianPersonalBdays = await getSebastianBirthdays();
+        
+        // Remove duplicates by checking if a birthday already exists in the read-only list
+        const uniqueSebastianBdays = sebastianPersonalBdays.filter(userBday => 
+          !sebastianBirthdays.some(readOnlyBday => 
+            readOnlyBday.name === userBday.name && readOnlyBday.date === userBday.date
+          )
+        );
+        
+        const combined = [...uniqueSebastianBdays, ...sebastianBirthdays];
+        setBirthdays(combined);
       } else {
         setIsSebastian(false);
+        // Other users only get their personal birthdays
         const userBdays = await getUserBirthdays();
-        setBirthdays(userBdays);
+        
+        // Filter out any read-only birthdays that might have been accidentally added
+        const filteredUserBdays = userBdays.filter(userBday => 
+          !sebastianBirthdays.some(readOnlyBday => 
+            readOnlyBday.name === userBday.name && readOnlyBday.date === userBday.date
+          )
+        );
+        
+        setBirthdays(filteredUserBdays);
       }
     };
 
@@ -51,11 +73,6 @@ export default function AllBirthdays() {
   }, []);
 
   const handleAdd = async () => {
-    if (isSebastian) {
-      Alert.alert("Not allowed", "You can't modify Sebastian's birthday list.");
-      return;
-    }
-
     if (!name || !date) {
       Alert.alert("Error", "Please enter a name and select a date.");
       return;
@@ -67,9 +84,31 @@ export default function AllBirthdays() {
     }
 
     try {
-      await saveBirthday({ name, date });
-      const updated = await getUserBirthdays();
-      setBirthdays(updated);
+      if (isSebastian) {
+        // For Sebastian, save to personal list
+        await saveSebastianBirthday({ name, date });
+        
+        // Update the display with Sebastian's personal birthdays + read-only list
+        const sebastianPersonalBdays = await getSebastianBirthdays();
+        
+        // Remove duplicates by checking if a birthday already exists in the read-only list
+        const uniqueSebastianBdays = sebastianPersonalBdays.filter(userBday => 
+          !sebastianBirthdays.some(readOnlyBday => 
+            readOnlyBday.name === userBday.name && readOnlyBday.date === userBday.date
+          )
+        );
+        
+        const combined = [...uniqueSebastianBdays, ...sebastianBirthdays];
+        setBirthdays(combined);
+      } else {
+        // For other users, save to shared list
+        await saveBirthday({ name, date });
+        
+        // Update the display with their personal birthdays
+        const updated = await getUserBirthdays();
+        setBirthdays(updated);
+      }
+      
       setName("");
       setDate("");
     } catch (e: any) {
@@ -78,17 +117,56 @@ export default function AllBirthdays() {
   };
 
   const deleteBirthday = async (toDelete: Birthday) => {
-    if (isSebastian) return;
-
-    const filtered = birthdays.filter(
-      (b) => b.name !== toDelete.name || b.date !== toDelete.date
+    // Check if this birthday is from the read-only list (Sebastian's birthdays)
+    const isReadOnlyBirthday = sebastianBirthdays.some(
+      (b) => b.name === toDelete.name && b.date === toDelete.date
     );
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-    setBirthdays(filtered);
+    
+    if (isSebastian && isReadOnlyBirthday) {
+      Alert.alert("Not allowed", "You can't delete birthdays from the read-only list.");
+      return;
+    }
+
+    if (isSebastian) {
+      // For Sebastian, delete from personal list
+      const sebastianPersonalBdays = await getSebastianBirthdays();
+      const filtered = sebastianPersonalBdays.filter(
+        (b) => b.name !== toDelete.name || b.date !== toDelete.date
+      );
+      
+      await AsyncStorage.setItem("sebastianBirthdays", JSON.stringify(filtered));
+      
+      // Update display with remaining personal birthdays + read-only list
+      const uniqueSebastianBdays = filtered.filter(userBday => 
+        !sebastianBirthdays.some(readOnlyBday => 
+          readOnlyBday.name === userBday.name && readOnlyBday.date === userBday.date
+        )
+      );
+      
+      const combined = [...uniqueSebastianBdays, ...sebastianBirthdays];
+      setBirthdays(combined);
+    } else {
+      // For other users, delete from shared list
+      const userBdays = await getUserBirthdays();
+      const filtered = userBdays.filter(
+        (b) => b.name !== toDelete.name || b.date !== toDelete.date
+      );
+      
+      await AsyncStorage.setItem("userBirthdays", JSON.stringify(filtered));
+      setBirthdays(filtered);
+    }
   };
 
   const confirmDelete = (b: Birthday) => {
-    if (isSebastian) return;
+    // Check if this birthday is from the read-only list (Sebastian's birthdays)
+    const isReadOnlyBirthday = sebastianBirthdays.some(
+      (bday) => bday.name === b.name && bday.date === b.date
+    );
+    
+    if (isSebastian && isReadOnlyBirthday) {
+      Alert.alert("Not allowed", "You can't delete birthdays from the read-only list.");
+      return;
+    }
 
     Alert.alert(
       "Delete Contact",
@@ -210,11 +288,41 @@ export default function AllBirthdays() {
           />
         )}
 
-        <Button
-          title={isSebastian ? "Disabled for Sebastian" : "Add Birthday"}
-          onPress={handleAdd}
-          disabled={isSebastian}
-        />
+        {isSebastian ? (
+          <View style={{ gap: 10 }}>
+            <Button
+              title="➕ Add to Sebastian's Personal List"
+              onPress={handleAdd}
+            />
+            <Text style={{ textAlign: 'center', color: '#666', fontSize: 12 }}>
+              This birthday will only appear for Sebastian
+            </Text>
+          </View>
+        ) : (
+          <Button
+            title="Add Birthday"
+            onPress={handleAdd}
+          />
+        )}
+
+        <Pressable style={styles.backButton} onPress={() => router.back()}>
+          <Text style={styles.backButtonText}>← Back to Home</Text>
+        </Pressable>
+
+        {/* Temporary button to clear corrupted data */}
+        {!isSebastian && (
+          <Pressable 
+            style={[styles.backButton, { backgroundColor: '#ff6b6b', marginTop: 10 }]} 
+            onPress={async () => {
+              await AsyncStorage.removeItem("userBirthdays");
+              const userBdays = await getUserBirthdays();
+              setBirthdays(userBdays);
+              Alert.alert("Data Cleared", "All birthdays have been cleared. You can now add your own birthdays.");
+            }}
+          >
+            <Text style={[styles.backButtonText, { color: '#fff' }]}>🗑️ Clear All Data (Debug)</Text>
+          </Pressable>
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -277,5 +385,17 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 8,
     color: "#444",
+  },
+  backButton: {
+    backgroundColor: "#f0f0f0",
+    padding: 15,
+    borderRadius: 10,
+    alignItems: "center",
+    marginTop: 20,
+  },
+  backButtonText: {
+    fontSize: 16,
+    color: "#333",
+    fontWeight: "500",
   },
 });
