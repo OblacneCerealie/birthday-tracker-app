@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { loadCoins } from "./lib/coins";
 import { getKittyLevel, getKittyRarity } from "./lib/kitty-system";
+import RainbowBadge from "./components/RainbowBadge";
 
 export default function KittyGalleryPage() {
   const router = useRouter();
@@ -279,9 +280,17 @@ export default function KittyGalleryPage() {
                   <Text style={styles.kittyName}>{kitty.name}</Text>
                   
                   {/* Rarity Badge */}
-                  <View style={[styles.rarityBadge, { backgroundColor: getKittyRarityColor(kitty.id) }]}>
-                    <Text style={styles.rarityText}>{getKittyRarity(kitty.id)}</Text>
-                  </View>
+                  {getKittyRarity(kitty.id) === 'Mythical' ? (
+                    <RainbowBadge 
+                      text={getKittyRarity(kitty.id)} 
+                      style={styles.rarityBadge}
+                      textStyle={styles.rarityText}
+                    />
+                  ) : (
+                    <View style={[styles.rarityBadge, { backgroundColor: getKittyRarityColor(kitty.id) }]}>
+                      <Text style={styles.rarityText}>{getKittyRarity(kitty.id)}</Text>
+                    </View>
+                  )}
                   
                   {/* Level */}
                   <Text style={styles.levelText}>Level {kittyLevels[kitty.id] || 1}</Text>

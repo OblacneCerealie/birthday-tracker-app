@@ -31,7 +31,7 @@ export const KITTY_RARITIES: Record<string, { kitties: string[]; probability: nu
   Mythical: {
     kitties: ['mfdoom'], // MFDOOMKITTY is the mythical kitty
     probability: 1,
-    color: '#FF6B35' // Rad orange color for mythical rarity
+    color: '#FF6B35' // Fallback color (not used due to rainbow animation)
   }
 };
 

@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { loadCoins, spendCoins } from "./lib/coins";
 import { addKittyLevel, getKittyLevel, getKittyRarity, getRandomKitty } from "./lib/kitty-system";
+import RainbowBadge from "./components/RainbowBadge";
 
 
 export default function GetNewKittyPage() {
@@ -297,9 +298,17 @@ export default function GetNewKittyPage() {
                       
                       {/* Rarity Badge */}
                       {resultKitty && (
-                        <View style={[styles.rarityBadge, { backgroundColor: getKittyRarityColor(resultKitty.id) }]}>
-                          <Text style={styles.rarityText}>{getKittyRarity(resultKitty.id)}</Text>
-                        </View>
+                        getKittyRarity(resultKitty.id) === 'Mythical' ? (
+                          <RainbowBadge 
+                            text={getKittyRarity(resultKitty.id)} 
+                            style={styles.rarityBadge}
+                            textStyle={styles.rarityText}
+                          />
+                        ) : (
+                          <View style={[styles.rarityBadge, { backgroundColor: getKittyRarityColor(resultKitty.id) }]}>
+                            <Text style={styles.rarityText}>{getKittyRarity(resultKitty.id)}</Text>
+                          </View>
+                        )
                       )}
                       
                       {/* Level or New Badge */}

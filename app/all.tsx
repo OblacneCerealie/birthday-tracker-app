@@ -16,6 +16,8 @@ import {
   View,
 } from "react-native";
 import {
+  CONTACT_CATEGORIES,
+  getAgeDisplay,
   getSebastianBirthdays,
   getUserBirthdays,
   saveBirthday,
@@ -43,6 +45,8 @@ export default function AllBirthdays() {
   const [expandedContact, setExpandedContact] = useState<Birthday | null>(null);
   const [contactNotes, setContactNotes] = useState<Record<string, string>>({});
   const [editingNotes, setEditingNotes] = useState<string>("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("All");
+  const [contactCategories, setContactCategories] = useState<Record<string, string>>({});
   const router = useRouter();
 
   useEffect(() => {
@@ -82,10 +86,11 @@ export default function AllBirthdays() {
     load();
   }, []);
 
-  // Load contact notes when birthdays change
+  // Load contact notes and categories when birthdays change
   useEffect(() => {
     if (birthdays.length > 0) {
       loadContactNotes();
+      loadContactCategories();
     }
   }, [birthdays]);
 
@@ -385,6 +390,36 @@ export default function AllBirthdays() {
     }
   };
 
+  const loadContactCategories = async () => {
+    try {
+      const categories: Record<string, string> = {};
+      for (const contact of birthdays) {
+        const key = `contactCategory_${contact.name}_${contact.date}`;
+        const savedCategory = await AsyncStorage.getItem(key);
+        if (savedCategory) {
+          categories[`${contact.name}_${contact.date}`] = savedCategory;
+        }
+      }
+      setContactCategories(categories);
+    } catch (error) {
+      console.log("Error loading contact categories:", error);
+    }
+  };
+
+  const saveContactCategory = async (contact: Birthday, category: string) => {
+    try {
+      const key = `contactCategory_${contact.name}_${contact.date}`;
+      const updatedCategories = { ...contactCategories };
+      updatedCategories[`${contact.name}_${contact.date}`] = category;
+      setContactCategories(updatedCategories);
+      
+      await AsyncStorage.setItem(key, category);
+      console.log(`Category saved for ${contact.name}: ${category}`);
+    } catch (error) {
+      console.log("Error saving contact category:", error);
+    }
+  };
+
   const groupByLetter = (list: Birthday[]) => {
     const sorted = [...list].sort((a, b) => a.name.localeCompare(b.name));
     const grouped: GroupedBirthdays = {};
@@ -400,10 +435,14 @@ export default function AllBirthdays() {
     return grouped;
   };
 
-  // Filter birthdays based on search query
-  const filteredBirthdays = birthdays.filter(birthday =>
-    birthday.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter birthdays based on search query and category
+  const filteredBirthdays = birthdays.filter(birthday => {
+    const matchesSearch = birthday.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const category = contactCategories[`${birthday.name}_${birthday.date}`] || "Other";
+    const matchesCategory = selectedCategory === "All" || category === selectedCategory;
+    
+    return matchesSearch && matchesCategory;
+  });
 
   const groupedBirthdays = groupByLetter(filteredBirthdays);
 
@@ -416,7 +455,7 @@ export default function AllBirthdays() {
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <Text style={styles.title}>🎂 All Birthdays</Text>
         
-        <Text style={styles.hintText}>💡 Tap to expand contacts and add notes • Long press to edit or delete</Text>
+        <Text style={styles.hintText}>💡 Tap to expand contacts and add notes/categories • Long press to edit or delete</Text>
 
         {/* Search Bar */}
         <TextInput
@@ -426,6 +465,31 @@ export default function AllBirthdays() {
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
+
+        {/* Category Filter */}
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          style={styles.categoryContainer}
+        >
+          {["All", ...CONTACT_CATEGORIES].map((category) => (
+            <Pressable
+              key={category}
+              style={[
+                styles.categoryButton,
+                selectedCategory === category && styles.selectedCategoryButton
+              ]}
+              onPress={() => setSelectedCategory(category)}
+            >
+              <Text style={[
+                styles.categoryButtonText,
+                selectedCategory === category && styles.selectedCategoryButtonText
+              ]}>
+                {category}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
 
         {Object.keys(groupedBirthdays).length === 0 ? (
           <Text style={{ marginBottom: 20, textAlign: 'center', color: '#666' }}>
@@ -450,8 +514,19 @@ export default function AllBirthdays() {
                       styles.card,
                       expandedContact && expandedContact.name === b.name && expandedContact.date === b.date && styles.expandedCard
                     ]}>
-                      <Text style={styles.name}>{b.name}</Text>
+                      <View style={styles.contactHeader}>
+                        <Text style={styles.name}>{b.name}</Text>
+                        <Text style={styles.ageText}>{getAgeDisplay(b.date)}</Text>
+                      </View>
                       <Text style={styles.dateText}>{b.date}</Text>
+                      
+                      {/* Category Display */}
+                      <View style={styles.categoryDisplay}>
+                        <Text style={styles.categoryLabel}>
+                          {contactCategories[`${b.name}_${b.date}`] || "Other"}
+                        </Text>
+                      </View>
+                      
                       {expandedContact && expandedContact.name === b.name && expandedContact.date === b.date && (
                         <Text style={styles.expandIndicator}>▼</Text>
                       )}
@@ -461,6 +536,28 @@ export default function AllBirthdays() {
                   {/* Expanded Notes Section */}
                   {expandedContact && expandedContact.name === b.name && expandedContact.date === b.date && (
                     <View style={styles.notesContainer}>
+                      {/* Category Selection */}
+                      <Text style={styles.notesLabel}>🏷️ Category:</Text>
+                      <View style={styles.categorySelection}>
+                        {CONTACT_CATEGORIES.map((category) => (
+                          <Pressable
+                            key={category}
+                            style={[
+                              styles.categoryOption,
+                              contactCategories[`${b.name}_${b.date}`] === category && styles.selectedCategoryOption
+                            ]}
+                            onPress={() => saveContactCategory(b, category)}
+                          >
+                            <Text style={[
+                              styles.categoryOptionText,
+                              contactCategories[`${b.name}_${b.date}`] === category && styles.selectedCategoryOptionText
+                            ]}>
+                              {category}
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                      
                       <Text style={styles.notesLabel}>📝 Notes:</Text>
                       <TextInput
                         placeholder="Add notes about this person..."
@@ -810,5 +907,81 @@ const styles = StyleSheet.create({
     color: "#333",
     fontSize: 14,
     fontWeight: "500",
+  },
+  categoryContainer: {
+    marginBottom: 15,
+  },
+  categoryButton: {
+    backgroundColor: "#f0f0f0",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: "#ddd",
+  },
+  selectedCategoryButton: {
+    backgroundColor: "#007aff",
+    borderColor: "#007aff",
+  },
+  categoryButtonText: {
+    fontSize: 14,
+    color: "#333",
+    fontWeight: "500",
+  },
+  selectedCategoryButtonText: {
+    color: "#fff",
+    fontWeight: "600",
+  },
+  contactHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 5,
+  },
+  ageText: {
+    fontSize: 12,
+    color: "#666",
+    fontStyle: "italic",
+  },
+  categoryDisplay: {
+    marginTop: 5,
+  },
+  categoryLabel: {
+    fontSize: 11,
+    color: "#007aff",
+    backgroundColor: "#f0f8ff",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    alignSelf: "flex-start",
+    fontWeight: "500",
+  },
+  categorySelection: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 15,
+  },
+  categoryOption: {
+    backgroundColor: "#f0f0f0",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: "#ddd",
+  },
+  selectedCategoryOption: {
+    backgroundColor: "#007aff",
+    borderColor: "#007aff",
+  },
+  categoryOptionText: {
+    fontSize: 12,
+    color: "#333",
+    fontWeight: "500",
+  },
+  selectedCategoryOptionText: {
+    color: "#fff",
+    fontWeight: "600",
   },
 });

@@ -4,20 +4,31 @@ import * as Notifications from "expo-notifications";
 export type Birthday = {
   name: string;
   date: string; // Format: YYYY-MM-DD
+  category?: string; // Optional category
 };
+
+export const CONTACT_CATEGORIES = [
+  "Family",
+  "Friends", 
+  "Work",
+  "School",
+  "Other"
+] as const;
+
+export type ContactCategory = typeof CONTACT_CATEGORIES[number];
 
 // Sebastian's birthdays (read-only)
 export const birthdays: Birthday[] = [
-  { name: "Adam Truchly", date: "2000-04-07" },
+  { name: "Adam Truchly", date: "2007-04-07" },
   { name: "Barbora Dorňáková", date: "2008-05-20" },
   { name: "Barbora Jančíková", date: "2007-04-01" },
   { name: "Barbora Pfeiler", date: "2007-08-22" },
   { name: "Ben McAughtry", date: "2006-10-19" },
-  { name: "Dominika Boso", date: "2000-06-05" },
-  { name: "Ella “Jack”", date: "2025-05-09" },
+  { name: "Dominika Boso", date: "2009-06-05" },
+  { name: "Ella “Jack”", date: "20O5-05-09" },
   { name: "Ema Čečetková", date: "2006-06-15" },
   { name: "Ema Petrakovičová", date: "2007-07-09" },
-  { name: "Eva Stratilova", date: "2000-10-03" },
+  { name: "Eva Stratilova", date: "2006-10-03" },
   { name: "Filip Novota", date: "2006-05-27" },
   { name: "Filip Oros", date: "2006-05-19" },
   { name: "Hana Kyselovičová", date: "2006-07-28" },
@@ -54,13 +65,13 @@ export const birthdays: Birthday[] = [
   { name: "Peter Riegl", date: "1981-10-27" },
   { name: "Peter Sás", date: "1995-08-23" },
   { name: "Peter Sládek", date: "2000-03-21" },
-  { name: "Petra Ehrmannová", date: "2000-09-23" },
+  { name: "Petra Ehrmannová", date: "2006-09-23" },
   { name: "Pietro", date: "2009-03-01" },
   { name: "Rebeka Jakabovičová", date: "1996-12-31" },
   { name: "Reňo Tokar", date: "2007-06-18" },
   { name: "Samuel Halienka", date: "2006-09-07" },
   { name: "Samuel Sidivar", date: "2007-05-28" },
-  { name: "Sarah Kralova", date: "2000-04-04" },
+  { name: "Sarah Kralova", date: "2004-04-04" },
   { name: "Stela Kralova", date: "2006-05-05" },
   { name: "Tibor Michlko", date: "1969-05-13" },
   { name: "Vanesa Vizentova", date: "2006-05-14" },
@@ -87,6 +98,29 @@ function getNextOccurrence(dateStr: string): Date {
   
   // Otherwise, return next year's date
   return new Date(today.getFullYear() + 1, month - 1, day);
+}
+
+// Calculate age from birthday
+export function calculateAge(birthDate: string): number {
+  const today = new Date();
+  const [year, month, day] = birthDate.split("-").map(Number);
+  const birth = new Date(year, month - 1, day);
+  
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+  
+  // If birthday hasn't occurred yet this year, subtract 1 from age
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+  
+  return age;
+}
+
+// Get age with proper formatting
+export function getAgeDisplay(birthDate: string): string {
+  const age = calculateAge(birthDate);
+  return `${age} years old`;
 }
 
 // For Sebastian (read-only)
