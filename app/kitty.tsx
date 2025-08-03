@@ -3,14 +3,16 @@ import { Audio } from 'expo-av';
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-    Image,
-    Pressable,
-    Share,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  Image,
+  Pressable,
+  Share,
+  StyleSheet,
+  Text,
+  TextInput,
+  View
 } from "react-native";
+import { loadCoins } from "./lib/coins";
+import { getEquippedKitty } from "./lib/kitty-system";
 
 export default function KittyPage() {
   const router = useRouter();
@@ -25,16 +27,27 @@ export default function KittyPage() {
   const [sleepingSound, setSleepingSound] = useState<any>(null);
   const [shouldBeSleeping, setShouldBeSleeping] = useState(false);
   const [meowSound, setMeowSound] = useState<any>(null);
+  const [coins, setCoins] = useState(5);
+  const [equippedKitty, setEquippedKitty] = useState("basic");
+  const [username, setUsername] = useState("");
+  const [currentKittyImages, setCurrentKittyImages] = useState({
+    awake: require("../Images_types_of_cats/Basic/45941046766.png"),
+    eating: require("../Images_types_of_cats/Basic/image (2).png"),
+    sleeping: require("../Images_types_of_cats/Basic/image (1).png"),
+  });
 
   useEffect(() => {
     loadKittyName();
     loadFeedingData();
+    loadUserData();
+    loadEquippedKitty();
   }, []);
 
   // Handle page focus/blur for audio
   useFocusEffect(
     React.useCallback(() => {
       // Page is focused - resume purring if kitty should be sleeping
+      loadEquippedKitty();
       if (shouldBeSleeping && !sleepingSound) {
         setIsSleeping(true);
         playSleepingSound();
@@ -62,6 +75,88 @@ export default function KittyPage() {
     } catch (error) {
       console.log("Error loading kitty name:", error);
     }
+  };
+
+  const loadUserData = async () => {
+    try {
+      // Load username
+      const name = await AsyncStorage.getItem("userName");
+      if (name) {
+        setUsername(name);
+        // Load coins for this user
+        const userCoins = await loadCoins(name);
+        setCoins(userCoins);
+      }
+    } catch (error) {
+      console.log("Error loading user data:", error);
+    }
+  };
+
+  const loadEquippedKitty = async () => {
+    try {
+      const name = await AsyncStorage.getItem("userName");
+      if (name) {
+        const equipped = await getEquippedKitty(name);
+        console.log("Main page - Loaded equipped kitty:", equipped);
+        setEquippedKitty(equipped);
+        updateKittyImages(equipped);
+      }
+    } catch (error) {
+      console.log("Error loading equipped kitty:", error);
+    }
+  };
+
+  const updateKittyImages = (kittyId: string) => {
+    const kittyImages: Record<string, { awake: any; eating: any; sleeping: any }> = {
+      basic: {
+        awake: require("../Images_types_of_cats/Basic/45941046766.png"),
+        eating: require("../Images_types_of_cats/Basic/image (2).png"),
+        sleeping: require("../Images_types_of_cats/Basic/image (1).png"),
+      },
+      water: {
+        awake: require("../Images_types_of_cats/Water_Kitty/waterkitty_awake.png"),
+        eating: require("../Images_types_of_cats/Water_Kitty/waterkitty_eating.png"),
+        sleeping: require("../Images_types_of_cats/Water_Kitty/waterkitty_sleeping.png"),
+      },
+      bgs: {
+        awake: require("../Images_types_of_cats/BGSkitty/BGSkitty_awake.png"),
+        eating: require("../Images_types_of_cats/BGSkitty/BGSkitty_eating.png"),
+        sleeping: require("../Images_types_of_cats/BGSkitty/BGSkitty_sleeping.png"),
+      },
+      ginger: {
+        awake: require("../Images_types_of_cats/GingerKitty/gingerkitty_awake.png"),
+        eating: require("../Images_types_of_cats/GingerKitty/gingerkitty_eating.png"),
+        sleeping: require("../Images_types_of_cats/GingerKitty/gingerkitty_sleeping.png"),
+      },
+      king: {
+        awake: require("../Images_types_of_cats/KingKitty/kingkitty_awake.png"),
+        eating: require("../Images_types_of_cats/KingKitty/kingkitty_eating.png"),
+        sleeping: require("../Images_types_of_cats/KingKitty/kingkitty_sleeping.png"),
+      },
+      street: {
+        awake: require("../Images_types_of_cats/StreetKitty/streetcat_awake.png"),
+        eating: require("../Images_types_of_cats/StreetKitty/streetcat_eating.png"),
+        sleeping: require("../Images_types_of_cats/StreetKitty/streetcat_sleeping (2).png"),
+      },
+      sphynx: {
+        awake: require("../Images_types_of_cats/SphynxKitty/sphynxkitty_awake.png"),
+        eating: require("../Images_types_of_cats/SphynxKitty/sphynxkitty_eating.png"),
+        sleeping: require("../Images_types_of_cats/SphynxKitty/sphynxkitty_sleeping.png"),
+      },
+      tuxedo: {
+        awake: require("../Images_types_of_cats/TuxedoKitty/tuxedokitty_awake.png"),
+        eating: require("../Images_types_of_cats/TuxedoKitty/tuxedokitty_eating.png"),
+        sleeping: require("../Images_types_of_cats/TuxedoKitty/tuxedokitty_sleeping.png"),
+      },
+      galactic: {
+        awake: require("../Images_types_of_cats/GalacticKitty/GalacticKitty_awake (4).png"),
+        eating: require("../Images_types_of_cats/GalacticKitty/GalacticKitty_eating (2).png"),
+        sleeping: require("../Images_types_of_cats/GalacticKitty/GalacticKitty_sleeping (1).png"),
+      },
+    };
+
+    const images = kittyImages[kittyId] || kittyImages.basic;
+    setCurrentKittyImages(images);
   };
 
   const loadFeedingData = async () => {
@@ -270,8 +365,16 @@ export default function KittyPage() {
     }
   };
 
+  const handleKittyGallery = () => {
+    router.push("/kitty-gallery");
+  };
+
   return (
     <View style={styles.container}>
+      {/* Currency Display */}
+      <View style={styles.currencyContainer}>
+        <Text style={styles.currencyText}>🪙 {coins}</Text>
+      </View>
       {isEditing ? (
         <View style={styles.editContainer}>
           <TextInput
@@ -310,10 +413,10 @@ export default function KittyPage() {
           <Image
             source={
               isEating 
-                ? require("../Images/image (2).png") 
+                ? currentKittyImages.eating
                 : isSleeping 
-                  ? require("../Images/image (1).png") 
-                  : require("../Images/45941046766.png")
+                  ? currentKittyImages.sleeping
+                  : currentKittyImages.awake
             }
             style={styles.kittyImage}
             resizeMode="contain"
@@ -345,7 +448,7 @@ export default function KittyPage() {
         disabled={!canFeed || isSleeping || isEating}
       >
         <Image
-          source={require("../Images/image.png")}
+          source={require("../Images_types_of_cats/image.png")}
           style={styles.tunaIcon}
           resizeMode="contain"
         />
@@ -368,6 +471,11 @@ export default function KittyPage() {
       <Pressable style={styles.debugButton} onPress={handleDebugFeed}>
         <Text style={styles.debugButtonText}>🐛 Debug: Reset Feeding</Text>
       </Pressable>
+
+      {/* Kitty Gallery Button */}
+      <Pressable style={styles.galleryButton} onPress={handleKittyGallery}>
+        <Text style={styles.galleryButtonText}>🐱 Kitty Gallery</Text>
+      </Pressable>
     </View>
   );
 }
@@ -379,6 +487,16 @@ const styles = StyleSheet.create({
     padding: 20,
     justifyContent: "center",
     alignItems: "center",
+  },
+  currencyContainer: {
+    position: "absolute",
+    top: 50,
+    right: 20,
+  },
+  currencyText: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
   },
   title: {
     fontSize: 26,
@@ -437,6 +555,19 @@ const styles = StyleSheet.create({
   },
   debugButtonText: {
     fontSize: 14,
+    color: "#fff",
+    fontWeight: "bold",
+  },
+  galleryButton: {
+    backgroundColor: "#9c27b0",
+    padding: 10,
+    borderRadius: 8,
+    alignItems: "center",
+    marginTop: 10,
+    width: "100%",
+  },
+  galleryButtonText: {
+    fontSize: 16,
     color: "#fff",
     fontWeight: "bold",
   },
