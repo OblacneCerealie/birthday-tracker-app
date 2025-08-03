@@ -153,6 +153,11 @@ export default function KittyPage() {
         eating: require("../Images_types_of_cats/GalacticKitty/GalacticKitty_eating (2).png"),
         sleeping: require("../Images_types_of_cats/GalacticKitty/GalacticKitty_sleeping (1).png"),
       },
+      mfdoom: {
+        awake: require("../Images_types_of_cats/MFDOOMKITTY/HelmetKitty_awake.png"),
+        eating: require("../Images_types_of_cats/MFDOOMKITTY/HelmetKitty_eating.png"),
+        sleeping: require("../Images_types_of_cats/MFDOOMKITTY/HelmetKitty_sleeping.png"),
+      },
     };
 
     const images = kittyImages[kittyId] || kittyImages.basic;

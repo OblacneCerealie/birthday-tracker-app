@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
+    Alert,
     Image,
     Pressable,
     ScrollView,
@@ -19,6 +20,7 @@ export default function KittyGalleryPage() {
   const [coins, setCoins] = useState(5);
   const [username, setUsername] = useState("");
   const [kittyLevels, setKittyLevels] = useState<Record<string, number>>({ basic: 1 });
+  const [isSebastian, setIsSebastian] = useState(false);
 
   // All available kitties data
   const allKitties = [
@@ -67,6 +69,11 @@ export default function KittyGalleryPage() {
       name: "Galactic Kitty",
       image: require("../Images_types_of_cats/GalacticKitty/GalacticKitty_awake (4).png"),
     },
+    {
+      id: "mfdoom",
+      name: "MFDOOM Kitty",
+      image: require("../Images_types_of_cats/MFDOOMKITTY/HelmetKitty_awake.png"),
+    },
   ];
 
   // Load unlocked kitties and user data on component mount and when page is focused
@@ -99,6 +106,9 @@ export default function KittyGalleryPage() {
         setUsername(name);
         const userCoins = await loadCoins(name);
         setCoins(userCoins);
+        
+        // Check if user is Sebastian
+        setIsSebastian(name.toLowerCase() === "sebastian");
       }
     } catch (error) {
       console.log("Error loading user data:", error);
@@ -157,14 +167,14 @@ export default function KittyGalleryPage() {
     .filter(kitty => unlockedKitties.has(kitty.id))
     .sort((a, b) => {
       // Define rarity order (highest to lowest)
-      const rarityOrder = ['Legendary', 'Epic', 'Rare', 'Basic'];
+      const rarityOrder = ['Mythical', 'Legendary', 'Epic', 'Rare', 'Basic'];
       const rarityA = getKittyRarity(a.id);
       const rarityB = getKittyRarity(b.id);
       
       const indexA = rarityOrder.indexOf(rarityA);
       const indexB = rarityOrder.indexOf(rarityB);
       
-      // Sort by rarity first (Legendary first, then Epic, etc.)
+      // Sort by rarity first (Mythical first, then Legendary, etc.)
       if (indexA !== indexB) {
         return indexA - indexB;
       }
@@ -181,6 +191,7 @@ export default function KittyGalleryPage() {
       case 'Rare': return '#4CAF50';
       case 'Epic': return '#9C27B0';
       case 'Legendary': return '#FFD700';
+      case 'Mythical': return '#FF6B35';
       default: return '#8B8B8B';
     }
   };
@@ -210,6 +221,39 @@ export default function KittyGalleryPage() {
         console.log(`Error equipping kitty: ${error}`);
       }
     }
+  };
+
+  const unlockAllKitties = async () => {
+    Alert.alert(
+      "Unlock All Kitties",
+      "Are you sure you want to unlock all kitties? This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Unlock All",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              // Get all kitty IDs
+              const allKittyIds = allKitties.map(kitty => kitty.id);
+              
+              // Update local state
+              setUnlockedKitties(new Set(allKittyIds));
+              
+              // Save to AsyncStorage
+              await AsyncStorage.setItem("unlockedKitties", JSON.stringify(allKittyIds));
+              
+              console.log("All kitties unlocked for Sebastian!");
+              Alert.alert("Success", "All kitties have been unlocked! 🎉");
+            } catch (error) {
+              console.log("Error unlocking all kitties:", error);
+              Alert.alert("Error", "Failed to unlock all kitties. Please try again.");
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
   };
 
   const renderKittyGrid = () => {
@@ -277,6 +321,13 @@ export default function KittyGalleryPage() {
       </View>
       
       <Text style={styles.title}>🐱 Kitty Gallery</Text>
+      
+      {/* Sebastian's Unlock All Button */}
+      {isSebastian && (
+        <Pressable style={styles.unlockAllButton} onPress={unlockAllKitties}>
+          <Text style={styles.unlockAllButtonText}>🔓 Unlock All Kitties</Text>
+        </Pressable>
+      )}
       
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.gridContainer}>
@@ -438,5 +489,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#333",
     fontWeight: "500",
+  },
+  unlockAllButton: {
+    backgroundColor: "#FF6B35",
+    padding: 10,
+    borderRadius: 8,
+    alignItems: "center",
+    marginBottom: 15,
+    alignSelf: "center",
+  },
+  unlockAllButtonText: {
+    fontSize: 14,
+    color: "#fff",
+    fontWeight: "bold",
   },
 }); 

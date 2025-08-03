@@ -140,6 +140,12 @@ export default function GetNewKittyPage() {
       image: require("../Images_types_of_cats/GalacticKitty/GalacticKitty_awake (4).png"),
       unlocked: false,
     },
+    {
+      id: "mfdoom",
+      name: "MFDOOM Kitty",
+      image: require("../Images_types_of_cats/MFDOOMKITTY/HelmetKitty_awake.png"),
+      unlocked: false,
+    },
   ];
 
   const handleRollForKitty = async () => {
@@ -261,6 +267,7 @@ export default function GetNewKittyPage() {
       case 'Rare': return '#4CAF50';
       case 'Epic': return '#9C27B0';
       case 'Legendary': return '#FFD700';
+      case 'Mythical': return '#FF6B35';
       default: return '#8B8B8B';
     }
   };

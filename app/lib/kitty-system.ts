@@ -3,7 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 export interface KittyData {
   id: string;
   name: string;
-  rarity: 'Basic' | 'Rare' | 'Epic' | 'Legendary';
+  rarity: 'Basic' | 'Rare' | 'Epic' | 'Legendary' | 'Mythical';
   level: number;
 }
 
@@ -25,15 +25,20 @@ export const KITTY_RARITIES: Record<string, { kitties: string[]; probability: nu
   },
   Legendary: {
     kitties: ['galactic'], // Galactic Kitty is the legendary kitty
-    probability: 5,
+    probability: 4,
     color: '#FFD700'
+  },
+  Mythical: {
+    kitties: ['mfdoom'], // MFDOOMKITTY is the mythical kitty
+    probability: 1,
+    color: '#FF6B35' // Rad orange color for mythical rarity
   }
 };
 
-export const getKittyRarity = (kittyId: string): 'Basic' | 'Rare' | 'Epic' | 'Legendary' => {
+export const getKittyRarity = (kittyId: string): 'Basic' | 'Rare' | 'Epic' | 'Legendary' | 'Mythical' => {
   for (const [rarity, data] of Object.entries(KITTY_RARITIES)) {
     if (data.kitties.includes(kittyId)) {
-      return rarity as 'Basic' | 'Rare' | 'Epic' | 'Legendary';
+      return rarity as 'Basic' | 'Rare' | 'Epic' | 'Legendary' | 'Mythical';
     }
   }
   return 'Basic'; // Default fallback

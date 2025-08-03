@@ -3,6 +3,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
+  ActionSheetIOS,
   Alert,
   Button,
   KeyboardAvoidingView,
@@ -24,6 +25,7 @@ import {
 
 type Birthday = { name: string; date: string };
 type GroupedBirthdays = { [letter: string]: Birthday[] };
+type BirthdayWithNotes = Birthday & { notes?: string };
 
 export default function AllBirthdays() {
   const [birthdays, setBirthdays] = useState<Birthday[]>([]);
@@ -33,6 +35,14 @@ export default function AllBirthdays() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [editingBirthday, setEditingBirthday] = useState<Birthday | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editDate, setEditDate] = useState("");
+  const [showEditDatePicker, setShowEditDatePicker] = useState(false);
+  const [editSelectedDate, setEditSelectedDate] = useState(new Date());
+  const [expandedContact, setExpandedContact] = useState<Birthday | null>(null);
+  const [contactNotes, setContactNotes] = useState<Record<string, string>>({});
+  const [editingNotes, setEditingNotes] = useState<string>("");
   const router = useRouter();
 
   useEffect(() => {
@@ -71,6 +81,13 @@ export default function AllBirthdays() {
 
     load();
   }, []);
+
+  // Load contact notes when birthdays change
+  useEffect(() => {
+    if (birthdays.length > 0) {
+      loadContactNotes();
+    }
+  }, [birthdays]);
 
   const handleAdd = async () => {
     if (!name || !date) {
@@ -198,6 +215,176 @@ export default function AllBirthdays() {
     setShowDatePicker(true);
   };
 
+  const handleLongPress = (birthday: Birthday) => {
+    // Check if this birthday is from the read-only list (Sebastian's birthdays)
+    const isReadOnlyBirthday = sebastianBirthdays.some(
+      (b) => b.name === birthday.name && b.date === birthday.date
+    );
+    
+    if (isSebastian && isReadOnlyBirthday) {
+      Alert.alert("Not allowed", "You can't modify birthdays from the read-only list.");
+      return;
+    }
+
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Edit', 'Delete'],
+          destructiveButtonIndex: 2,
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) {
+            // Edit
+            setEditingBirthday(birthday);
+            setEditName(birthday.name);
+            setEditDate(birthday.date);
+            setEditSelectedDate(new Date(birthday.date));
+          } else if (buttonIndex === 2) {
+            // Delete
+            confirmDelete(birthday);
+          }
+        }
+      );
+    } else {
+      // For Android, use Alert with options
+      Alert.alert(
+        "Contact Options",
+        `What would you like to do with ${birthday.name}?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Edit", onPress: () => {
+            setEditingBirthday(birthday);
+            setEditName(birthday.name);
+            setEditDate(birthday.date);
+            setEditSelectedDate(new Date(birthday.date));
+          }},
+          { text: "Delete", style: "destructive", onPress: () => confirmDelete(birthday) },
+        ],
+        { cancelable: true }
+      );
+    }
+  };
+
+  const handleEdit = async () => {
+    if (!editName || !editDate) {
+      Alert.alert("Error", "Please enter a name and select a date.");
+      return;
+    }
+
+    if (/\d/.test(editName)) {
+      Alert.alert("Invalid Name", "Names cannot contain numbers.");
+      return;
+    }
+
+    if (!editingBirthday) return;
+
+    try {
+      if (isSebastian) {
+        // For Sebastian, update in personal list
+        const sebastianPersonalBdays = await getSebastianBirthdays();
+        const updated = sebastianPersonalBdays.map(b => 
+          b.name === editingBirthday.name && b.date === editingBirthday.date
+            ? { name: editName, date: editDate }
+            : b
+        );
+        
+        await AsyncStorage.setItem("sebastianBirthdays", JSON.stringify(updated));
+        
+        // Update the display with Sebastian's personal birthdays + read-only list
+        const uniqueSebastianBdays = updated.filter(userBday => 
+          !sebastianBirthdays.some(readOnlyBday => 
+            readOnlyBday.name === userBday.name && readOnlyBday.date === userBday.date
+          )
+        );
+        
+        const combined = [...uniqueSebastianBdays, ...sebastianBirthdays];
+        setBirthdays(combined);
+      } else {
+        // For other users, update in shared list
+        const userBdays = await getUserBirthdays();
+        const updated = userBdays.map(b => 
+          b.name === editingBirthday.name && b.date === editingBirthday.date
+            ? { name: editName, date: editDate }
+            : b
+        );
+        
+        await AsyncStorage.setItem("userBirthdays", JSON.stringify(updated));
+        setBirthdays(updated);
+      }
+      
+      // Reset edit state
+      setEditingBirthday(null);
+      setEditName("");
+      setEditDate("");
+    } catch (e: any) {
+      Alert.alert("Error", e.message || "Something went wrong.");
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditingBirthday(null);
+    setEditName("");
+    setEditDate("");
+  };
+
+  const onEditDateChange = (event: any, selectedDate?: Date) => {
+    setShowEditDatePicker(false);
+    if (selectedDate) {
+      setEditSelectedDate(selectedDate);
+      const year = selectedDate.getFullYear();
+      const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const day = String(selectedDate.getDate()).padStart(2, '0');
+      setEditDate(`${year}-${month}-${day}`);
+    }
+  };
+
+  const showEditDatePickerModal = () => {
+    setShowEditDatePicker(true);
+  };
+
+  const handleContactPress = (contact: Birthday) => {
+    if (expandedContact && expandedContact.name === contact.name && expandedContact.date === contact.date) {
+      // If clicking the same contact, collapse it
+      setExpandedContact(null);
+      setEditingNotes("");
+    } else {
+      // Expand the clicked contact and collapse any other
+      setExpandedContact(contact);
+      setEditingNotes(contactNotes[`${contact.name}_${contact.date}`] || "");
+    }
+  };
+
+  const saveContactNotes = async (contact: Birthday) => {
+    try {
+      const key = `contactNotes_${contact.name}_${contact.date}`;
+      const updatedNotes = { ...contactNotes };
+      updatedNotes[`${contact.name}_${contact.date}`] = editingNotes;
+      setContactNotes(updatedNotes);
+      
+      await AsyncStorage.setItem(key, editingNotes);
+      console.log(`Notes saved for ${contact.name}`);
+    } catch (error) {
+      console.log("Error saving contact notes:", error);
+    }
+  };
+
+  const loadContactNotes = async () => {
+    try {
+      const notes: Record<string, string> = {};
+      for (const contact of birthdays) {
+        const key = `contactNotes_${contact.name}_${contact.date}`;
+        const savedNotes = await AsyncStorage.getItem(key);
+        if (savedNotes) {
+          notes[`${contact.name}_${contact.date}`] = savedNotes;
+        }
+      }
+      setContactNotes(notes);
+    } catch (error) {
+      console.log("Error loading contact notes:", error);
+    }
+  };
+
   const groupByLetter = (list: Birthday[]) => {
     const sorted = [...list].sort((a, b) => a.name.localeCompare(b.name));
     const grouped: GroupedBirthdays = {};
@@ -228,6 +415,8 @@ export default function AllBirthdays() {
     >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <Text style={styles.title}>🎂 All Birthdays</Text>
+        
+        <Text style={styles.hintText}>💡 Tap to expand contacts and add notes • Long press to edit or delete</Text>
 
         {/* Search Bar */}
         <TextInput
@@ -247,19 +436,101 @@ export default function AllBirthdays() {
             <View key={letter}>
               <Text style={styles.letter}>{letter} –</Text>
               {groupedBirthdays[letter].map((b, i) => (
-                <Pressable
-                  key={i}
-                  onLongPress={() => confirmDelete(b)}
-                  delayLongPress={400}
-                >
-                  <View style={styles.card}>
-                    <Text style={styles.name}>{b.name}</Text>
-                    <Text style={styles.dateText}>{b.date}</Text>
-                  </View>
-                </Pressable>
+                <View key={i} style={styles.contactContainer}>
+                  <Pressable
+                    onLongPress={() => handleLongPress(b)}
+                    onPress={() => handleContactPress(b)}
+                    delayLongPress={400}
+                    style={({ pressed }) => [
+                      styles.cardContainer,
+                      pressed && styles.cardPressed
+                    ]}
+                  >
+                    <View style={[
+                      styles.card,
+                      expandedContact && expandedContact.name === b.name && expandedContact.date === b.date && styles.expandedCard
+                    ]}>
+                      <Text style={styles.name}>{b.name}</Text>
+                      <Text style={styles.dateText}>{b.date}</Text>
+                      {expandedContact && expandedContact.name === b.name && expandedContact.date === b.date && (
+                        <Text style={styles.expandIndicator}>▼</Text>
+                      )}
+                    </View>
+                  </Pressable>
+                  
+                  {/* Expanded Notes Section */}
+                  {expandedContact && expandedContact.name === b.name && expandedContact.date === b.date && (
+                    <View style={styles.notesContainer}>
+                      <Text style={styles.notesLabel}>📝 Notes:</Text>
+                      <TextInput
+                        placeholder="Add notes about this person..."
+                        placeholderTextColor="#666"
+                        style={styles.notesInput}
+                        value={editingNotes}
+                        onChangeText={setEditingNotes}
+                        multiline
+                        numberOfLines={4}
+                      />
+                      <View style={styles.notesButtons}>
+                        <Pressable 
+                          style={[styles.notesButton, styles.saveNotesButton]} 
+                          onPress={() => saveContactNotes(b)}
+                        >
+                          <Text style={styles.saveNotesButtonText}>Save Notes</Text>
+                        </Pressable>
+                        <Pressable 
+                          style={[styles.notesButton, styles.cancelNotesButton]} 
+                          onPress={() => setEditingNotes(contactNotes[`${b.name}_${b.date}`] || "")}
+                        >
+                          <Text style={styles.cancelNotesButtonText}>Reset</Text>
+                        </Pressable>
+                      </View>
+                    </View>
+                  )}
+                </View>
               ))}
             </View>
           ))
+        )}
+
+        {/* Edit Modal */}
+        {editingBirthday && (
+          <View style={styles.editModal}>
+            <Text style={styles.editTitle}>Edit Contact</Text>
+            
+            <TextInput
+              placeholder="Name"
+              placeholderTextColor="#222"
+              style={styles.input}
+              value={editName}
+              onChangeText={setEditName}
+            />
+            
+            <Pressable style={styles.dateButton} onPress={showEditDatePickerModal}>
+              <Text style={styles.dateButtonText}>
+                {editDate ? `Selected: ${editDate}` : "Select Birthday Date"}
+              </Text>
+            </Pressable>
+
+            {showEditDatePicker && (
+              <DateTimePicker
+                value={editSelectedDate}
+                mode="date"
+                display="default"
+                onChange={onEditDateChange}
+                maximumDate={new Date()}
+              />
+            )}
+
+            <View style={styles.editButtons}>
+              <Pressable style={[styles.editButton, styles.cancelButton]} onPress={cancelEdit}>
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </Pressable>
+              <Pressable style={[styles.editButton, styles.saveButton]} onPress={handleEdit}>
+                <Text style={styles.saveButtonText}>Save</Text>
+              </Pressable>
+            </View>
+          </View>
         )}
 
         <Text style={styles.subtitle}>➕ Add New Birthday</Text>
@@ -344,6 +615,13 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 20,
   },
+  hintText: {
+    fontSize: 14,
+    textAlign: "center",
+    color: "#666",
+    marginBottom: 15,
+    fontStyle: "italic",
+  },
   subtitle: { fontSize: 20, marginTop: 30, marginBottom: 10 },
   searchInput: {
     borderWidth: 1,
@@ -354,13 +632,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: "#f8f8f8",
   },
+  cardContainer: {
+    marginBottom: 10,
+  },
   card: {
     backgroundColor: "#f5f5f5",
     padding: 15,
     borderRadius: 10,
-    marginBottom: 10,
     borderLeftWidth: 4,
     borderLeftColor: "#007aff",
+  },
+  cardPressed: {
+    opacity: 0.7,
+    transform: [{ scale: 0.98 }],
   },
   name: { fontSize: 18, fontWeight: "bold", color: "#333" },
   dateText: { fontSize: 14, color: "#666", marginTop: 4 },
@@ -404,6 +688,127 @@ const styles = StyleSheet.create({
   backButtonText: {
     fontSize: 16,
     color: "#333",
+    fontWeight: "500",
+  },
+  editModal: {
+    backgroundColor: "#fff",
+    padding: 20,
+    borderRadius: 10,
+    marginTop: 20,
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+  },
+  editTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 15,
+  },
+  editButtons: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginTop: 20,
+  },
+  editButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    minWidth: 100,
+    alignItems: "center",
+  },
+  saveButton: {
+    backgroundColor: "#007aff",
+    borderWidth: 1,
+    borderColor: "#007aff",
+  },
+  saveButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  cancelButton: {
+    backgroundColor: "#f0f0f0",
+    borderWidth: 1,
+    borderColor: "#ccc",
+  },
+  cancelButtonText: {
+    color: "#333",
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  contactContainer: {
+    marginBottom: 10,
+  },
+  expandedCard: {
+    borderColor: "#007aff",
+    backgroundColor: "#f0f8ff",
+  },
+  expandIndicator: {
+    fontSize: 12,
+    color: "#007aff",
+    textAlign: "center",
+    marginTop: 5,
+  },
+  notesContainer: {
+    backgroundColor: "#f8f9fa",
+    padding: 15,
+    borderRadius: 8,
+    marginTop: 5,
+    borderWidth: 1,
+    borderColor: "#e9ecef",
+  },
+  notesLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 8,
+  },
+  notesInput: {
+    borderWidth: 1,
+    borderColor: "#ddd",
+    padding: 10,
+    borderRadius: 6,
+    fontSize: 14,
+    backgroundColor: "#fff",
+    minHeight: 80,
+    textAlignVertical: "top",
+  },
+  notesButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 10,
+  },
+  notesButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    minWidth: 80,
+    alignItems: "center",
+  },
+  saveNotesButton: {
+    backgroundColor: "#28a745",
+    borderWidth: 1,
+    borderColor: "#28a745",
+  },
+  saveNotesButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  cancelNotesButton: {
+    backgroundColor: "#f0f0f0",
+    borderWidth: 1,
+    borderColor: "#ccc",
+  },
+  cancelNotesButtonText: {
+    color: "#333",
+    fontSize: 14,
     fontWeight: "500",
   },
 });
