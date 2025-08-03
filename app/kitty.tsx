@@ -299,6 +299,14 @@ export default function KittyPage() {
       console.log('Error playing eating sound:', error);
     }
     
+    // Give coins for feeding (5 coins)
+    if (username) {
+      const newCoins = coins + 5;
+      setCoins(newCoins);
+      await AsyncStorage.setItem(`coins_${username}`, newCoins.toString());
+      console.log(`Earned 5 coins for feeding! Total: ${newCoins}`);
+    }
+    
     // Update feeding streak based on calendar days
     const today = new Date().toDateString();
     const yesterday = new Date();
@@ -472,10 +480,12 @@ export default function KittyPage() {
         </Pressable>
       </View>
 
-      {/* Debug Button */}
-      <Pressable style={styles.debugButton} onPress={handleDebugFeed}>
-        <Text style={styles.debugButtonText}>🐛 Debug: Reset Feeding</Text>
-      </Pressable>
+      {/* Debug Button - Sebastian Only */}
+      {username?.toLowerCase() === "sebastian" && (
+        <Pressable style={styles.debugButton} onPress={handleDebugFeed}>
+          <Text style={styles.debugButtonText}>🐛 Debug: Reset Feeding</Text>
+        </Pressable>
+      )}
 
       {/* Kitty Gallery Button */}
       <Pressable style={styles.galleryButton} onPress={handleKittyGallery}>
