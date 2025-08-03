@@ -146,7 +146,7 @@ async function scheduleBirthdayNotification(birthday: Birthday) {
       },
     });
     
-    console.log(`Scheduled notification for ${birthday.name} on ${notificationDate.toDateString()}`);
+    //console.log(`Scheduled notification for ${birthday.name} on ${notificationDate.toDateString()}`)
   } catch (error) {
     console.error(`Failed to schedule notification for ${birthday.name}:`, error);
   }

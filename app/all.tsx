@@ -309,6 +309,14 @@ export default function AllBirthdays() {
           <Text style={styles.backButtonText}>← Back to Home</Text>
         </Pressable>
 
+        {/* See Your Kitty Button */}
+        <Pressable 
+          style={[styles.backButton, { backgroundColor: '#ff69b4', marginTop: 15 }]} 
+          onPress={() => router.push("/kitty")}
+        >
+          <Text style={[styles.backButtonText, { color: '#fff' }]}>🐱 See Your Kitty</Text>
+        </Pressable>
+
         {/* Temporary button to clear corrupted data */}
         {!isSebastian && (
           <Pressable 
