@@ -9,9 +9,9 @@ import {
     Text,
     View
 } from "react-native";
+import RainbowBadge from "./components/RainbowBadge";
 import { loadCoins, spendCoins } from "./lib/coins";
 import { addKittyLevel, getKittyLevel, getKittyRarity, getRandomKitty } from "./lib/kitty-system";
-import RainbowBadge from "./components/RainbowBadge";
 
 
 export default function GetNewKittyPage() {
@@ -28,6 +28,7 @@ export default function GetNewKittyPage() {
   const [resultKitty, setResultKitty] = useState(null);
   const [unlockedKitties, setUnlockedKitties] = useState(new Set(["basic"]));
   const [username, setUsername] = useState("");
+  const [isSoundMuted, setIsSoundMuted] = useState(false);
   const [kittyLevels, setKittyLevels] = useState<Record<string, number>>({ basic: 1 });
 
   // Load unlocked kitties and user data on component mount
@@ -35,6 +36,7 @@ export default function GetNewKittyPage() {
     loadUnlockedKitties();
     loadUserData();
     loadKittyLevels();
+    loadSoundSettings();
   }, []);
 
   const loadUserData = async () => {
@@ -72,6 +74,27 @@ export default function GetNewKittyPage() {
       }
     } catch (error) {
       console.log("Error loading unlocked kitties:", error);
+    }
+  };
+
+  const loadSoundSettings = async () => {
+    try {
+      const soundMuted = await AsyncStorage.getItem("soundMuted");
+      setIsSoundMuted(soundMuted === "true");
+    } catch (error) {
+      console.log("Error loading sound settings:", error);
+    }
+  };
+
+  const toggleSound = async () => {
+    const newMutedState = !isSoundMuted;
+    setIsSoundMuted(newMutedState);
+    
+    // Save to AsyncStorage
+    try {
+      await AsyncStorage.setItem("soundMuted", newMutedState.toString());
+    } catch (error) {
+      console.log("Error saving sound settings:", error);
     }
   };
 
@@ -279,6 +302,13 @@ export default function GetNewKittyPage() {
       <View style={styles.currencyContainer}>
         <Text style={styles.currencyText}>🪙 {currentCoins}</Text>
       </View>
+      
+      {/* Settings Button */}
+      <Pressable style={styles.settingsButton} onPress={toggleSound}>
+        <Text style={styles.settingsButtonText}>
+          {isSoundMuted ? '🔇' : '🔊'}
+        </Text>
+      </Pressable>
       
       {showContent ? (
         showResult ? (
@@ -643,5 +673,24 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: "#fff",
     fontWeight: "bold",
+  },
+  settingsButton: {
+    position: "absolute",
+    top: 5,
+    right: 15,
+    backgroundColor: '#f0f0f0',
+    padding: 10,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  settingsButtonText: {
+    fontSize: 20,
+    fontWeight: 'bold',
   },
 }); 
