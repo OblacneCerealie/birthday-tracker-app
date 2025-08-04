@@ -22,6 +22,7 @@ export default function KittyGalleryPage() {
   const [username, setUsername] = useState("");
   const [kittyLevels, setKittyLevels] = useState<Record<string, number>>({ basic: 1 });
   const [kittyStatBonuses, setKittyStatBonuses] = useState<Record<string, any>>({});
+  const [kittyXP, setKittyXP] = useState<Record<string, number>>({});
   const [isSebastian, setIsSebastian] = useState(false);
   const [isSoundMuted, setIsSoundMuted] = useState(false);
   const [selectedKitty, setSelectedKitty] = useState<any>(null);
@@ -141,6 +142,12 @@ export default function KittyGalleryPage() {
         const bonusData = await AsyncStorage.getItem(bonusKey);
         if (bonusData) {
           setKittyStatBonuses(JSON.parse(bonusData));
+        }
+        
+        // Load XP data
+        const xpData = await AsyncStorage.getItem("kittyXP");
+        if (xpData) {
+          setKittyXP(JSON.parse(xpData));
         }
       }
     } catch (error) {
@@ -275,6 +282,52 @@ export default function KittyGalleryPage() {
     setSelectedKitty(null);
   };
 
+  const getXPForLevel = (level: number) => {
+    // Level 1 to 2: 10 XP, Level 2 to 3: 30 XP, Level 3 to 4: 50 XP, etc.
+    return level * 10 + (level - 1) * 10;
+  };
+
+  const getLevelFromXP = (xp: number) => {
+    let level = 1;
+    let requiredXP = 0;
+    
+    while (requiredXP <= xp) {
+      requiredXP += getXPForLevel(level);
+      if (requiredXP <= xp) {
+        level++;
+      }
+    }
+    
+    return level;
+  };
+
+  const getXPProgress = (kittyId: string) => {
+    const currentXP = kittyXP[kittyId] || 0;
+    const currentLevel = getLevelFromXP(currentXP);
+    
+    // Calculate XP needed for current level
+    let xpForCurrentLevel = 0;
+    for (let i = 1; i < currentLevel; i++) {
+      xpForCurrentLevel += getXPForLevel(i);
+    }
+    
+    // Calculate XP needed for next level
+    const xpForNextLevel = xpForCurrentLevel + getXPForLevel(currentLevel);
+    
+    // Calculate progress
+    const xpInCurrentLevel = currentXP - xpForCurrentLevel;
+    const xpNeededForNextLevel = xpForNextLevel - xpForCurrentLevel;
+    const progressPercentage = (xpInCurrentLevel / xpNeededForNextLevel) * 100;
+    
+    return {
+      currentXP,
+      currentLevel,
+      xpInCurrentLevel,
+      xpNeededForNextLevel,
+      progressPercentage
+    };
+  };
+
   const getKittyStats = (kittyId: string) => {
     const rarity = getKittyRarity(kittyId);
     
@@ -370,6 +423,23 @@ export default function KittyGalleryPage() {
                   
                   {/* Level */}
                   <Text style={styles.levelText}>Level {kittyLevels[kitty.id] || 1}</Text>
+                  
+                  {/* XP Bar */}
+                  {(() => {
+                    const xpProgress = getXPProgress(kitty.id);
+                    return (
+                      <View style={styles.cardXpBarContainer}>
+                        <View style={styles.cardXpBarBackground}>
+                          <View 
+                            style={[
+                              styles.cardXpBarFill, 
+                              { width: `${xpProgress.progressPercentage}%` }
+                            ]} 
+                          />
+                        </View>
+                      </View>
+                    );
+                  })()}
                   
                   {equippedKitty === kitty.id && (
                     <Text style={styles.equippedText}>EQUIPPED</Text>
@@ -477,8 +547,28 @@ export default function KittyGalleryPage() {
               ))}
             </View>
 
-            {/* Level */}
-            <Text style={styles.profileLevelText}>Level {kittyLevels[selectedKitty.id] || 1}</Text>
+            {/* Level and XP Bar */}
+            <View style={styles.levelSection}>
+              <Text style={styles.profileLevelText}>Level {kittyLevels[selectedKitty.id] || 1}</Text>
+              {(() => {
+                const xpProgress = getXPProgress(selectedKitty.id);
+                return (
+                  <View style={styles.xpBarContainer}>
+                    <View style={styles.xpBarBackground}>
+                      <View 
+                        style={[
+                          styles.xpBarFill, 
+                          { width: `${xpProgress.progressPercentage}%` }
+                        ]} 
+                      />
+                    </View>
+                    <Text style={styles.xpText}>
+                      {xpProgress.xpInCurrentLevel} / {xpProgress.xpNeededForNextLevel} XP
+                    </Text>
+                  </View>
+                );
+              })()}
+            </View>
 
             {/* Equip Button */}
             {unlockedKitties.has(selectedKitty.id) ? (
@@ -755,7 +845,49 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#666',
     textAlign: 'center',
+    marginBottom: 10,
+  },
+  levelSection: {
     marginBottom: 20,
+    alignItems: 'center',
+  },
+  xpBarContainer: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  xpBarBackground: {
+    width: '100%',
+    height: 12,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 6,
+    overflow: 'hidden',
+    marginBottom: 5,
+  },
+  xpBarFill: {
+    height: '100%',
+    backgroundColor: '#4CAF50',
+    borderRadius: 6,
+  },
+  xpText: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '500',
+  },
+  cardXpBarContainer: {
+    width: '100%',
+    marginTop: 2,
+  },
+  cardXpBarBackground: {
+    width: '100%',
+    height: 4,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  cardXpBarFill: {
+    height: '100%',
+    backgroundColor: '#4CAF50',
+    borderRadius: 2,
   },
   equipButton: {
     backgroundColor: '#007aff',

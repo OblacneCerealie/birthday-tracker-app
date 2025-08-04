@@ -13,7 +13,7 @@ import {
   TextInput,
   View
 } from "react-native";
-import { loadCoins } from "./lib/coins";
+import { loadCoins, saveCoins } from "./lib/coins";
 import { getEquippedKitty, getKittyRarity } from "./lib/kitty-system";
 
 export default function KittyPage() {
@@ -629,7 +629,7 @@ export default function KittyPage() {
           const newCoins = coins + reward - heistInvestment;
           console.log("Coins after reward:", newCoins);
           setCoins(newCoins);
-          await AsyncStorage.setItem(`coins_${name}`, newCoins.toString());
+          await saveCoins(name, newCoins);
         }
       } catch (error) {
         console.log("Error saving coins:", error);
@@ -646,50 +646,6 @@ export default function KittyPage() {
       
       // Wait for all XP to be processed
       await Promise.all(xpPromises);
-      
-      // Update kitty levels state immediately
-      const updatedLevels = { ...kittyLevels };
-      const updatedStatBonuses = { ...kittyStatBonuses };
-      
-      for (const kittyId of [heistTeam.brain, heistTeam.stealer, heistTeam.tank, heistTeam.luckyCharm]) {
-        if (kittyId) {
-          const newXP = (kittyXP[kittyId] || 0) + xpAmount;
-          const newLevel = getLevelFromXP(newXP);
-          updatedLevels[kittyId] = newLevel;
-          
-          // Update stat bonuses if leveled up
-          const oldLevel = getLevelFromXP(kittyXP[kittyId] || 0);
-          if (newLevel > oldLevel) {
-            const currentBonuses = kittyStatBonuses[kittyId] || {
-              Speed: 0, Stealth: 0, Intelligence: 0, Luck: 0, Strength: 0
-            };
-            const stats = ['Speed', 'Stealth', 'Intelligence', 'Luck', 'Strength'];
-            const randomStat = stats[Math.floor(Math.random() * stats.length)];
-            updatedStatBonuses[kittyId] = {
-              ...currentBonuses,
-              [randomStat]: currentBonuses[randomStat as keyof typeof currentBonuses] + 1,
-            };
-          }
-        }
-      }
-      
-      setKittyLevels(updatedLevels);
-      setKittyStatBonuses(updatedStatBonuses);
-      
-      // Also save to AsyncStorage immediately
-      try {
-        const name = await AsyncStorage.getItem("userName");
-        if (name) {
-          const levelKey = `kittyLevels_${name}`;
-          await AsyncStorage.setItem(levelKey, JSON.stringify(updatedLevels));
-          
-          // Also save stat bonuses with username-specific key
-          const bonusKey = `kittyStatBonuses_${name}`;
-          await AsyncStorage.setItem(bonusKey, JSON.stringify(updatedStatBonuses));
-        }
-      } catch (error) {
-        console.log("Error saving updated levels:", error);
-      }
     } else {
       let penalty;
       if (selectedBank === "Local Bank") {
@@ -709,7 +665,7 @@ export default function KittyPage() {
           const newCoins = Math.max(5, coins - penalty); // Ensure minimum 5 coins
           console.log("Coins after penalty:", newCoins, "Penalty:", penalty);
           setCoins(newCoins);
-          await AsyncStorage.setItem(`coins_${name}`, newCoins.toString());
+          await saveCoins(name, newCoins);
         }
       } catch (error) {
         console.log("Error saving coins:", error);
