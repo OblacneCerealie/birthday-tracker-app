@@ -199,14 +199,34 @@ export async function scheduleAllBirthdayNotifications() {
       }
     }
     
-    // Schedule notifications for Sebastian's birthdays
-    birthdays.forEach(scheduleBirthdayNotification);
+    // Get current username to determine which notifications to schedule
+    const userName = await AsyncStorage.getItem("userName");
+    if (!userName) {
+      console.log('No username found, skipping notification scheduling');
+      return;
+    }
     
-    // Schedule notifications for user birthdays
+    const isSebastian = userName.trim().toLowerCase() === "sebastian";
+    
+    // Check if this device has ever been used with Sebastian account
+    const hasAccessedSebastianAccount = await AsyncStorage.getItem("hasAccessedSebastianAccount");
+    const shouldGetSebastianNotifications = isSebastian || hasAccessedSebastianAccount === "true";
+    
+    if (shouldGetSebastianNotifications) {
+      // Users who have accessed Sebastian account get notifications for read-only birthdays and personal birthdays
+      birthdays.forEach(scheduleBirthdayNotification);
+      
+      if (isSebastian) {
+        const sebastianPersonalBdays = await getSebastianBirthdays();
+        sebastianPersonalBdays.forEach(scheduleBirthdayNotification);
+      }
+    }
+    
+    // Always schedule notifications for user's own birthdays
     const userBirthdays = await getUserBirthdays();
     userBirthdays.forEach(scheduleBirthdayNotification);
     
-    console.log('All birthday notifications scheduled successfully');
+    console.log(`Birthday notifications scheduled successfully for user: ${userName}`);
   } catch (error) {
     console.error('Failed to schedule birthday notifications:', error);
   }

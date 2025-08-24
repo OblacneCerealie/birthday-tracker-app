@@ -3,15 +3,15 @@ import { Audio } from 'expo-av';
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-  Alert,
-  Image,
-  Pressable,
-  ScrollView,
-  Share,
-  StyleSheet,
-  Text,
-  TextInput,
-  View
+    Alert,
+    Image,
+    Pressable,
+    ScrollView,
+    Share,
+    StyleSheet,
+    Text,
+    TextInput,
+    View
 } from "react-native";
 import { loadCoins, saveCoins } from "./lib/coins";
 import { getEquippedKitty, getKittyRarity } from "./lib/kitty-system";
@@ -80,8 +80,8 @@ export default function KittyPage() {
   // Handle page focus/blur for audio
   useFocusEffect(
     React.useCallback(() => {
-      // Page is focused - resume purring if kitty should be sleeping
-      // loadUserData(); // Temporarily disabled to fix coin calculation
+      // Page is focused - refresh user data including coins
+      loadUserData(true); // Force refresh coins when page comes into focus
       loadEquippedKitty();
       if (shouldBeSleeping && !sleepingSound) {
         setIsSleeping(true);
@@ -112,14 +112,14 @@ export default function KittyPage() {
     }
   };
 
-  const loadUserData = async () => {
+  const loadUserData = async (forceRefresh: boolean = false) => {
     try {
       // Load username
       const name = await AsyncStorage.getItem("userName");
       if (name) {
         setUsername(name);
-        // Load coins for this user
-        const userCoins = await loadCoins(name);
+        // Load coins for this user with optional force refresh
+        const userCoins = await loadCoins(name, forceRefresh);
         setCoins(userCoins);
       }
     } catch (error) {
@@ -354,7 +354,7 @@ export default function KittyPage() {
     if (username) {
       const newCoins = coins + 5;
       setCoins(newCoins);
-      await AsyncStorage.setItem(`coins_${username}`, newCoins.toString());
+      await saveCoins(username, newCoins);
       console.log(`Earned 5 coins for feeding! Total: ${newCoins}`);
     }
     
@@ -999,7 +999,7 @@ export default function KittyPage() {
     setShowKittyDropdown(null);
   };
 
-  const handleStartKick = () => {
+  const handleStartKick = async () => {
     if (!selectedKickKitty) return;
     
     // 50/50 chance
@@ -1010,18 +1010,15 @@ export default function KittyPage() {
       const newCoins = coins + 5;
       setCoins(newCoins);
       
-      // Save coins
-      const saveCoins = async () => {
-        try {
-          const name = await AsyncStorage.getItem("userName");
-          if (name) {
-            await AsyncStorage.setItem(`coins_${name}`, newCoins.toString());
-          }
-        } catch (error) {
-          console.log("Error saving coins:", error);
+      // Save coins using global system
+      try {
+        const name = await AsyncStorage.getItem("userName");
+        if (name) {
+          await saveCoins(name, newCoins);
         }
-      };
-      saveCoins();
+      } catch (error) {
+        console.log("Error saving coins:", error);
+      }
       
       // Award XP
       addXPToKitty(selectedKickKitty, 10);

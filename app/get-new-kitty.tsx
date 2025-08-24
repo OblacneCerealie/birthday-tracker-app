@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
     Alert,
@@ -39,12 +39,19 @@ export default function GetNewKittyPage() {
     loadSoundSettings();
   }, []);
 
-  const loadUserData = async () => {
+  // Refresh coins when page comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      loadUserData(true); // Force refresh coins when page comes into focus
+    }, [])
+  );
+
+  const loadUserData = async (forceRefresh: boolean = false) => {
     try {
       const name = await AsyncStorage.getItem("userName");
       if (name) {
         setUsername(name);
-        const userCoins = await loadCoins(name);
+        const userCoins = await loadCoins(name, forceRefresh);
         setCurrentCoins(userCoins);
       }
     } catch (error) {

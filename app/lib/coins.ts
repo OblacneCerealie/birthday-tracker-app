@@ -3,6 +3,11 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 export const COIN_STORAGE_KEY = "kittyCoins";
 export const MANAGER_ACCOUNT = "sebastian";
 
+// In-memory cache to prevent race conditions and improve performance
+let coinCache: { [username: string]: number } = {};
+let cacheTimestamp: { [username: string]: number } = {};
+const CACHE_DURATION = 5000; // 5 seconds cache
+
 export const getInitialCoins = (username: string): number => {
   // Sebastian gets 10,000 coins as manager account
   if (username.toLowerCase() === MANAGER_ACCOUNT) {
@@ -12,21 +17,44 @@ export const getInitialCoins = (username: string): number => {
   return 5;
 };
 
-export const loadCoins = async (username: string): Promise<number> => {
+export const loadCoins = async (username: string, forceRefresh: boolean = false): Promise<number> => {
   try {
+    const now = Date.now();
+    
+    // Check if we have fresh cached data (unless force refresh is requested)
+    if (!forceRefresh && 
+        coinCache[username] !== undefined && 
+        cacheTimestamp[username] && 
+        (now - cacheTimestamp[username]) < CACHE_DURATION) {
+      return coinCache[username];
+    }
+    
     const key = `${COIN_STORAGE_KEY}_${username}`;
     const savedCoins = await AsyncStorage.getItem(key);
+    let coins: number;
+    
     if (savedCoins !== null) {
-      return parseInt(savedCoins);
+      coins = parseInt(savedCoins);
     } else {
       // Set initial coins for new users
-      const initialCoins = getInitialCoins(username);
-      await saveCoins(username, initialCoins);
-      return initialCoins;
+      coins = getInitialCoins(username);
+      await AsyncStorage.setItem(key, coins.toString());
     }
+    
+    // Update cache
+    coinCache[username] = coins;
+    cacheTimestamp[username] = now;
+    
+    return coins;
   } catch (error) {
     console.log("Error loading coins:", error);
-    return getInitialCoins(username);
+    const fallbackCoins = getInitialCoins(username);
+    
+    // Cache the fallback too
+    coinCache[username] = fallbackCoins;
+    cacheTimestamp[username] = Date.now();
+    
+    return fallbackCoins;
   }
 };
 
@@ -34,6 +62,10 @@ export const saveCoins = async (username: string, coins: number): Promise<void> 
   try {
     const key = `${COIN_STORAGE_KEY}_${username}`;
     await AsyncStorage.setItem(key, coins.toString());
+    
+    // Update cache immediately to prevent inconsistencies
+    coinCache[username] = coins;
+    cacheTimestamp[username] = Date.now();
   } catch (error) {
     console.log("Error saving coins:", error);
   }
@@ -62,4 +94,26 @@ export const addCoins = async (username: string, amount: number): Promise<void> 
   } catch (error) {
     console.log("Error adding coins:", error);
   }
+};
+
+// Helper function to clear cache (useful for testing or when switching users)
+export const clearCoinCache = (username?: string): void => {
+  if (username) {
+    delete coinCache[username];
+    delete cacheTimestamp[username];
+  } else {
+    coinCache = {};
+    cacheTimestamp = {};
+  }
+};
+
+// Helper function to get current cached coins without async call (useful for UI updates)
+export const getCachedCoins = (username: string): number | null => {
+  const now = Date.now();
+  if (coinCache[username] !== undefined && 
+      cacheTimestamp[username] && 
+      (now - cacheTimestamp[username]) < CACHE_DURATION) {
+    return coinCache[username];
+  }
+  return null;
 }; 

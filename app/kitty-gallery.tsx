@@ -2,13 +2,13 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-  Alert,
-  Image,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View
+    Alert,
+    Image,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View
 } from "react-native";
 import RainbowBadge from "./components/RainbowBadge";
 import { loadCoins } from "./lib/coins";
@@ -97,7 +97,7 @@ export default function KittyGalleryPage() {
   useFocusEffect(
     React.useCallback(() => {
       const loadAllData = async () => {
-        await loadUserData(); // Load username first
+        await loadUserData(true); // Force refresh coins when page comes into focus
         await loadUnlockedKitties();
         await loadKittyLevels();
         await loadEquippedKitty(); // Load equipped kitty after username is set
@@ -106,12 +106,12 @@ export default function KittyGalleryPage() {
     }, [])
   );
 
-  const loadUserData = async () => {
+  const loadUserData = async (forceRefresh: boolean = false) => {
     try {
       const name = await AsyncStorage.getItem("userName");
       if (name) {
         setUsername(name);
-        const userCoins = await loadCoins(name);
+        const userCoins = await loadCoins(name, forceRefresh);
         setCoins(userCoins);
         
         // Check if user is Sebastian

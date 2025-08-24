@@ -3,26 +3,26 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-  ActionSheetIOS,
-  Alert,
-  Button,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+    ActionSheetIOS,
+    Alert,
+    Button,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
 } from "react-native";
 import {
-  CONTACT_CATEGORIES,
-  getAgeDisplay,
-  getSebastianBirthdays,
-  getUserBirthdays,
-  saveBirthday,
-  saveSebastianBirthday,
-  birthdays as sebastianBirthdays,
+    CONTACT_CATEGORIES,
+    getAgeDisplay,
+    getSebastianBirthdays,
+    getUserBirthdays,
+    saveBirthday,
+    saveSebastianBirthday,
+    birthdays as sebastianBirthdays,
 } from "./lib/birthdays";
 
 type Birthday = { name: string; date: string };
@@ -47,7 +47,7 @@ export default function AllBirthdays() {
   const [editingNotes, setEditingNotes] = useState<string>("");
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [contactCategories, setContactCategories] = useState<Record<string, string>>({});
-  const [isSoundMuted, setIsSoundMuted] = useState(false);
+
   const router = useRouter();
 
   useEffect(() => {
@@ -85,7 +85,6 @@ export default function AllBirthdays() {
     };
 
     load();
-    loadSoundSettings();
   }, []);
 
   // Load contact notes and categories when birthdays change
@@ -422,26 +421,7 @@ export default function AllBirthdays() {
     }
   };
 
-  const loadSoundSettings = async () => {
-    try {
-      const soundMuted = await AsyncStorage.getItem("soundMuted");
-      setIsSoundMuted(soundMuted === "true");
-    } catch (error) {
-      console.log("Error loading sound settings:", error);
-    }
-  };
 
-  const toggleSound = async () => {
-    const newMutedState = !isSoundMuted;
-    setIsSoundMuted(newMutedState);
-    
-    // Save to AsyncStorage
-    try {
-      await AsyncStorage.setItem("soundMuted", newMutedState.toString());
-    } catch (error) {
-      console.log("Error saving sound settings:", error);
-    }
-  };
 
   const groupByLetter = (list: Birthday[]) => {
     const sorted = [...list].sort((a, b) => a.name.localeCompare(b.name));
@@ -476,12 +456,7 @@ export default function AllBirthdays() {
       keyboardVerticalOffset={80}
     >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        {/* Settings Button */}
-        <Pressable style={styles.settingsButton} onPress={toggleSound}>
-          <Text style={styles.settingsButtonText}>
-            {isSoundMuted ? '🔇' : '🔊'}
-          </Text>
-        </Pressable>
+
         
         <Text style={styles.title}>🎂 All Birthdays</Text>
         
@@ -1014,24 +989,5 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "600",
   },
-  settingsButton: {
-    position: "absolute",
-    top: 5,
-    right: 15,
-    backgroundColor: '#f0f0f0',
-    padding: 10,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-    zIndex: 1000,
-  },
-  settingsButtonText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
+
 });

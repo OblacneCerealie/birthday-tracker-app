@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { Alert, Button, StyleSheet, Text, TextInput, View } from "react-native";
+import { clearCoinCache } from "./lib/coins";
 
 export default function WelcomeScreen() {
   const [name, setName] = useState("");
@@ -33,6 +34,15 @@ export default function WelcomeScreen() {
     }
 
     await AsyncStorage.setItem("userName", trimmed);
+    
+    // Mark that Sebastian account has been accessed on this device
+    if (isSebastian) {
+      await AsyncStorage.setItem("hasAccessedSebastianAccount", "true");
+    }
+    
+    // Clear coin cache when switching users to prevent showing wrong coin amounts
+    clearCoinCache();
+    
     router.replace("/");
   };
 
