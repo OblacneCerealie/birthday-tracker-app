@@ -10,9 +10,9 @@ import {
     Text,
     View
 } from "react-native";
+import { loadCoins } from "../lib/coins";
+import { getKittyRarity } from "../lib/kitty-system";
 import RainbowBadge from "./components/RainbowBadge";
-import { loadCoins } from "./lib/coins";
-import { getKittyRarity } from "./lib/kitty-system";
 
 export default function KittyGalleryPage() {
   const router = useRouter();

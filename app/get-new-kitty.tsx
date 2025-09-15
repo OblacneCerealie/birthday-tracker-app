@@ -9,9 +9,9 @@ import {
     Text,
     View
 } from "react-native";
+import { loadCoins, spendCoins } from "../lib/coins";
+import { addKittyLevel, getKittyLevel, getKittyRarity, getRandomKitty } from "../lib/kitty-system";
 import RainbowBadge from "./components/RainbowBadge";
-import { loadCoins, spendCoins } from "./lib/coins";
-import { addKittyLevel, getKittyLevel, getKittyRarity, getRandomKitty } from "./lib/kitty-system";
 
 
 export default function GetNewKittyPage() {

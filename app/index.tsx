@@ -10,7 +10,7 @@ import {
     getUpcomingUserBirthdays,
     getUserBirthdays,
     scheduleAllBirthdayNotifications,
-} from "./lib/birthdays";
+} from "../lib/birthdays";
 
 export default function HomeScreen() {
   const [authorized, setAuthorized] = useState(false);
@@ -190,20 +190,6 @@ export default function HomeScreen() {
         <Text style={styles.logout}>🔓 Logout</Text>
       </Pressable>
 
-      {/* See Your Kitty Button */}
-      <Pressable 
-        style={styles.kittyButton} 
-        onPress={() => router.push('/kitty')}
-      >
-        <Text style={styles.kittyButtonText}>🐱 See Your Kitty</Text>
-      </Pressable>
-
-      {/* Special NHIE button for Barbora */}
-      {(username.toLowerCase() === "barbora") && (
-        <Pressable style={styles.nhieButton} onPress={() => router.push('/nhie')}>
-          <Text style={styles.nhieButtonText}>🎮 Play NHIE</Text>
-        </Pressable>
-      )}
 
       {/* Birthday Celebration Banner */}
       {showCelebration && (
@@ -248,6 +234,7 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     backgroundColor: "#fff",
     flex: 1,
+    justifyContent: "center",
   },
   greeting: {
     fontSize: 22,
@@ -338,46 +325,6 @@ const styles = StyleSheet.create({
   todayText: {
     fontWeight: 'bold',
     color: '#FFD700', // Golden color for today's text
-  },
-  nhieButton: {
-    backgroundColor: '#FF6B9D', // Pink color for NHIE button
-    padding: 15,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 15,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  nhieButtonText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  kittyButton: {
-    backgroundColor: '#ff69b4', // Pink color for kitty button
-    padding: 15,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 15,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  kittyButtonText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
   },
 });
 

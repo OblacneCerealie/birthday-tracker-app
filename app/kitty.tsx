@@ -13,8 +13,8 @@ import {
     TextInput,
     View
 } from "react-native";
-import { loadCoins, saveCoins } from "./lib/coins";
-import { getEquippedKitty, getKittyRarity } from "./lib/kitty-system";
+import { loadCoins, saveCoins } from "../lib/coins";
+import { getEquippedKitty, getKittyRarity } from "../lib/kitty-system";
 
 export default function KittyPage() {
   const router = useRouter();

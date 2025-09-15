@@ -23,7 +23,7 @@ import {
     saveBirthday,
     saveSebastianBirthday,
     birthdays as sebastianBirthdays,
-} from "./lib/birthdays";
+} from "../lib/birthdays";
 
 type Birthday = { name: string; date: string };
 type GroupedBirthdays = { [letter: string]: Birthday[] };
