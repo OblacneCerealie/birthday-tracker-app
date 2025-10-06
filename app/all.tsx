@@ -47,6 +47,7 @@ export default function AllBirthdays() {
   const [editingNotes, setEditingNotes] = useState<string>("");
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [contactCategories, setContactCategories] = useState<Record<string, string>>({});
+  const [sortMode, setSortMode] = useState<"alphabetical" | "upcoming">("alphabetical");
 
   const router = useRouter();
 
@@ -423,6 +424,26 @@ export default function AllBirthdays() {
 
 
 
+  // Helper function to calculate days until next birthday
+  const getDaysUntilBirthday = (dateStr: string): number => {
+    const today = new Date();
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    
+    const [year, month, day] = dateStr.split("-").map(Number);
+    const thisYear = new Date(today.getFullYear(), month - 1, day);
+    const thisYearStart = new Date(thisYear.getFullYear(), thisYear.getMonth(), thisYear.getDate());
+    
+    // If birthday is today or in the future this year, return days until this year's birthday
+    if (thisYearStart >= todayStart) {
+      return Math.round((+thisYearStart - +todayStart) / (1000 * 60 * 60 * 24));
+    }
+    
+    // Otherwise, return days until next year's birthday
+    const nextYear = new Date(today.getFullYear() + 1, month - 1, day);
+    const nextYearStart = new Date(nextYear.getFullYear(), nextYear.getMonth(), nextYear.getDate());
+    return Math.round((+nextYearStart - +todayStart) / (1000 * 60 * 60 * 24));
+  };
+
   const groupByLetter = (list: Birthday[]) => {
     const sorted = [...list].sort((a, b) => a.name.localeCompare(b.name));
     const grouped: GroupedBirthdays = {};
@@ -438,6 +459,47 @@ export default function AllBirthdays() {
     return grouped;
   };
 
+  const sortByUpcoming = (list: Birthday[]): Birthday[] => {
+    return [...list].sort((a, b) => {
+      const daysA = getDaysUntilBirthday(a.date);
+      const daysB = getDaysUntilBirthday(b.date);
+      return daysA - daysB;
+    });
+  };
+
+  const groupByUpcomingMonth = (list: Birthday[]) => {
+    const sorted = sortByUpcoming(list);
+    const grouped: { [monthYear: string]: Birthday[] } = {};
+    const monthNames = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+
+    for (const b of sorted) {
+      const [year, month, day] = b.date.split("-").map(Number);
+      const today = new Date();
+      const thisYear = new Date(today.getFullYear(), month - 1, day);
+      
+      // Determine if this birthday is this year or next year
+      const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const thisYearStart = new Date(thisYear.getFullYear(), thisYear.getMonth(), thisYear.getDate());
+      
+      let targetYear = today.getFullYear();
+      if (thisYearStart < todayStart) {
+        targetYear = today.getFullYear() + 1;
+      }
+      
+      const monthYearKey = `${monthNames[month - 1]} ${targetYear}`;
+      
+      if (!grouped[monthYearKey]) {
+        grouped[monthYearKey] = [];
+      }
+      grouped[monthYearKey].push(b);
+    }
+
+    return grouped;
+  };
+
   // Filter birthdays based on search query and category
   const filteredBirthdays = birthdays.filter(birthday => {
     const matchesSearch = birthday.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -447,7 +509,9 @@ export default function AllBirthdays() {
     return matchesSearch && matchesCategory;
   });
 
-  const groupedBirthdays = groupByLetter(filteredBirthdays);
+  // Apply sorting based on selected mode
+  const groupedBirthdays = sortMode === "alphabetical" ? groupByLetter(filteredBirthdays) : {};
+  const upcomingGroupedBirthdays = sortMode === "upcoming" ? groupByUpcomingMonth(filteredBirthdays) : {};
 
   return (
     <KeyboardAvoidingView
@@ -496,11 +560,48 @@ export default function AllBirthdays() {
           ))}
         </ScrollView>
 
-        {Object.keys(groupedBirthdays).length === 0 ? (
+        {/* Sort Mode Toggle */}
+        <View style={styles.sortContainer}>
+          <Text style={styles.sortLabel}>Sort by:</Text>
+          <View style={styles.sortButtons}>
+            <Pressable
+              style={[
+                styles.sortButton,
+                sortMode === "alphabetical" && styles.selectedSortButton
+              ]}
+              onPress={() => setSortMode("alphabetical")}
+            >
+              <Text style={[
+                styles.sortButtonText,
+                sortMode === "alphabetical" && styles.selectedSortButtonText
+              ]}>
+                🔤 A-Z
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[
+                styles.sortButton,
+                sortMode === "upcoming" && styles.selectedSortButton
+              ]}
+              onPress={() => setSortMode("upcoming")}
+            >
+              <Text style={[
+                styles.sortButtonText,
+                sortMode === "upcoming" && styles.selectedSortButtonText
+              ]}>
+                📅 Upcoming
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+
+        {(sortMode === "alphabetical" && Object.keys(groupedBirthdays).length === 0) || 
+         (sortMode === "upcoming" && Object.keys(upcomingGroupedBirthdays).length === 0) ? (
           <Text style={{ marginBottom: 20, textAlign: 'center', color: '#666' }}>
             {searchQuery ? 'No birthdays found matching your search.' : 'No birthdays yet.'}
           </Text>
-        ) : (
+        ) : sortMode === "alphabetical" ? (
+          // Alphabetical view (grouped by letter)
           Object.keys(groupedBirthdays).map((letter) => (
             <View key={letter}>
               <Text style={styles.letter}>{letter} –</Text>
@@ -591,6 +692,112 @@ export default function AllBirthdays() {
                   )}
                 </View>
               ))}
+            </View>
+          ))
+        ) : (
+          // Upcoming view (grouped by month)
+          Object.keys(upcomingGroupedBirthdays).map((monthYear) => (
+            <View key={monthYear}>
+              <Text style={styles.letter}>{monthYear} –</Text>
+              {upcomingGroupedBirthdays[monthYear].map((b, i) => {
+                const daysUntil = getDaysUntilBirthday(b.date);
+                const isToday = daysUntil === 0;
+                return (
+                  <View key={i} style={styles.contactContainer}>
+                    <Pressable
+                      onLongPress={() => handleLongPress(b)}
+                      onPress={() => handleContactPress(b)}
+                      delayLongPress={400}
+                      style={({ pressed }) => [
+                        styles.cardContainer,
+                        pressed && styles.cardPressed
+                      ]}
+                    >
+                      <View style={[
+                        styles.card,
+                        isToday && styles.todayCard,
+                        expandedContact && expandedContact.name === b.name && expandedContact.date === b.date && styles.expandedCard
+                      ]}>
+                        <View style={styles.contactHeader}>
+                          <Text style={styles.name}>
+                            {isToday ? '🎂 ' : ''}{b.name}{isToday ? ' 🎂' : ''}
+                          </Text>
+                          <Text style={styles.ageText}>{getAgeDisplay(b.date)}</Text>
+                        </View>
+                        <Text style={styles.dateText}>{b.date}</Text>
+                        
+                        {/* Days until birthday */}
+                        <Text style={[styles.daysUntilText, isToday && styles.todayText]}>
+                          {isToday ? "🎉 Today! 🎉" : `${daysUntil} day${daysUntil === 1 ? '' : 's'} left`}
+                        </Text>
+                        
+                        {/* Category Display */}
+                        <View style={styles.categoryDisplay}>
+                          <Text style={styles.categoryLabel}>
+                            {contactCategories[`${b.name}_${b.date}`] || "Other"}
+                          </Text>
+                        </View>
+                        
+                        {expandedContact && expandedContact.name === b.name && expandedContact.date === b.date && (
+                          <Text style={styles.expandIndicator}>▼</Text>
+                        )}
+                      </View>
+                    </Pressable>
+                    
+                    {/* Expanded Notes Section */}
+                    {expandedContact && expandedContact.name === b.name && expandedContact.date === b.date && (
+                      <View style={styles.notesContainer}>
+                        {/* Category Selection */}
+                        <Text style={styles.notesLabel}>🏷️ Category:</Text>
+                        <View style={styles.categorySelection}>
+                          {CONTACT_CATEGORIES.map((category) => (
+                            <Pressable
+                              key={category}
+                              style={[
+                                styles.categoryOption,
+                                contactCategories[`${b.name}_${b.date}`] === category && styles.selectedCategoryOption
+                              ]}
+                              onPress={() => saveContactCategory(b, category)}
+                            >
+                              <Text style={[
+                                styles.categoryOptionText,
+                                contactCategories[`${b.name}_${b.date}`] === category && styles.selectedCategoryOptionText
+                              ]}>
+                                {category}
+                              </Text>
+                            </Pressable>
+                          ))}
+                        </View>
+                        
+                        <Text style={styles.notesLabel}>📝 Notes:</Text>
+                        <TextInput
+                          placeholder="Add notes about this person..."
+                          placeholderTextColor="#666"
+                          style={styles.notesInput}
+                          value={editingNotes}
+                          onChangeText={setEditingNotes}
+                          multiline
+                          numberOfLines={4}
+                        />
+                        <View style={styles.notesButtons}>
+                          <Pressable 
+                            style={[styles.notesButton, styles.saveNotesButton]} 
+                            onPress={() => saveContactNotes(b)}
+                          >
+                            <Text style={styles.saveNotesButtonText}>Save Notes</Text>
+                          </Pressable>
+                          <Pressable 
+                            style={[styles.notesButton, styles.cancelNotesButton]} 
+                            onPress={() => setEditingNotes(contactNotes[`${b.name}_${b.date}`] || "")}
+                          >
+                            <Text style={styles.cancelNotesButtonText}>Reset</Text>
+                          </Pressable>
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
             </View>
           ))
         )}
@@ -988,6 +1195,59 @@ const styles = StyleSheet.create({
   selectedCategoryOptionText: {
     color: "#fff",
     fontWeight: "600",
+  },
+  sortContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 20,
+    paddingHorizontal: 5,
+  },
+  sortLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#333",
+    marginRight: 10,
+  },
+  sortButtons: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  sortButton: {
+    backgroundColor: "#f0f0f0",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#ddd",
+  },
+  selectedSortButton: {
+    backgroundColor: "#007aff",
+    borderColor: "#007aff",
+  },
+  sortButtonText: {
+    fontSize: 14,
+    color: "#333",
+    fontWeight: "500",
+  },
+  selectedSortButtonText: {
+    color: "#fff",
+    fontWeight: "600",
+  },
+  todayCard: {
+    backgroundColor: "#fff3cd",
+    borderLeftColor: "#ffc107",
+    borderLeftWidth: 6,
+  },
+  daysUntilText: {
+    fontSize: 14,
+    color: "#007aff",
+    fontWeight: "600",
+    marginTop: 4,
+  },
+  todayText: {
+    color: "#d63384",
+    fontSize: 15,
+    fontWeight: "700",
   },
 
 });
