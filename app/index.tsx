@@ -11,6 +11,8 @@ import {
     getUserBirthdays,
     scheduleAllBirthdayNotifications,
 } from "../lib/birthdays";
+import { useTheme } from "../lib/theme";
+import FloatingSettingsButton from "./components/FloatingSettingsButton";
 
 export default function HomeScreen() {
   const [authorized, setAuthorized] = useState(false);
@@ -21,6 +23,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const confettiRef = useRef<ConfettiCannon>(null);
   const bannerAnimation = useRef(new Animated.Value(0)).current;
+  const { colors } = useTheme();
 
   const loadData = useCallback(async () => {
     const name = await AsyncStorage.getItem("userName");
@@ -135,11 +138,6 @@ export default function HomeScreen() {
     }
   };
 
-  const handleLogout = async () => {
-    await AsyncStorage.removeItem("userName");
-    router.replace("/welcome");
-  };
-
   const getBirthdayMessage = () => {
     if (todayBirthdays.length === 1) {
       return `🎉 It's ${todayBirthdays[0]}'s birthday today! 🎉`;
@@ -150,8 +148,12 @@ export default function HomeScreen() {
     return '';
   };
 
+  const styles = createStyles(colors);
+
   return (
     <View style={styles.container}>
+      <FloatingSettingsButton />
+      
       <Text style={styles.greeting}>Hi, {username}!</Text>
       <Text style={styles.title}>🎉 Upcoming Birthdays</Text>
 
@@ -169,7 +171,7 @@ export default function HomeScreen() {
               <Text style={styles.name}>
                 {isToday ? '🎂 ' : ''}{b.name}{isToday ? ' 🎂' : ''}
               </Text>
-              <Text>{b.date}</Text>
+              <Text style={styles.dateText}>{b.date}</Text>
               <Text style={[styles.days, isToday && styles.todayText]}>
                 {isToday ? "🎉 It's their birthday today! 🎉" : `${b.daysAway} day(s) left`}
               </Text>
@@ -177,7 +179,7 @@ export default function HomeScreen() {
           );
         })
       ) : (
-        <Text style={{ textAlign: "center", marginTop: 20 }}>
+        <Text style={styles.noDataText}>
           No birthdays to show yet.
         </Text>
       )}
@@ -185,11 +187,6 @@ export default function HomeScreen() {
       <Pressable style={styles.linkContainer} onPress={() => router.push('/all')}>
         <Text style={styles.link}>📅 View All Birthdays / Add New</Text>
       </Pressable>
-
-      <Pressable onPress={handleLogout} style={styles.logoutContainer}>
-        <Text style={styles.logout}>🔓 Logout</Text>
-      </Pressable>
-
 
       {/* Birthday Celebration Banner */}
       {showCelebration && (
@@ -228,11 +225,11 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     padding: 20,
     paddingTop: 60,
-    backgroundColor: "#fff",
+    backgroundColor: colors.background,
     flex: 1,
     justifyContent: "center",
   },
@@ -241,50 +238,52 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginBottom: 10,
     textAlign: "center",
+    color: colors.text,
   },
   title: {
     fontSize: 26,
     fontWeight: "bold",
     marginBottom: 20,
     textAlign: "center",
+    color: colors.text,
   },
   card: {
-    backgroundColor: "#f5f5f5",
+    backgroundColor: colors.cardBackground,
     padding: 15,
     borderRadius: 10,
     marginBottom: 10,
     borderLeftWidth: 4,
-    borderLeftColor: "#007aff",
+    borderLeftColor: colors.primary,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   name: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#333",
+    color: colors.text,
+  },
+  dateText: {
+    color: colors.secondaryText,
+    marginTop: 2,
   },
   days: {
     marginTop: 4,
     fontStyle: "italic",
-    color: "#666",
+    color: colors.secondaryText,
+  },
+  noDataText: {
+    textAlign: "center",
+    marginTop: 20,
+    color: colors.secondaryText,
   },
   link: {
     marginTop: 30,
     fontSize: 18,
     textAlign: "center",
-    color: "#007aff",
-  },
-  logout: {
-    marginTop: 20,
-    fontSize: 18,
-    textAlign: "center",
-    color: "red",
-    fontWeight: "bold",
+    color: colors.primary,
   },
   linkContainer: {
     marginTop: 30,
-    padding: 10,
-  },
-  logoutContainer: {
-    marginTop: 20,
     padding: 10,
   },
   celebrationBanner: {
@@ -292,7 +291,7 @@ const styles = StyleSheet.create({
     bottom: 20,
     left: 20,
     right: 20,
-    backgroundColor: '#E3F2FD', // Soft light blue background
+    backgroundColor: colors.primary + '20', // Primary color with opacity
     padding: 15,
     borderRadius: 15,
     shadowColor: '#000',
@@ -303,28 +302,30 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4.65,
     elevation: 8,
+    borderWidth: 1,
+    borderColor: colors.primary,
   },
   celebrationText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1976D2', // Dark blue text for good contrast on light blue
+    color: colors.primary,
     textAlign: 'center',
     marginBottom: 5,
   },
   celebrationSubtext: {
     fontSize: 14,
-    color: '#1976D2', // Dark blue text for good contrast on light blue
+    color: colors.primary,
     textAlign: 'center',
     opacity: 0.9,
   },
   todayCard: {
-    borderLeftColor: '#FFD700', // Golden border for today's birthdays
+    borderLeftColor: colors.warning,
     borderLeftWidth: 6,
-    backgroundColor: '#FFF8DC', // Light golden background
+    backgroundColor: colors.warning + '20', // Warning color with opacity
   },
   todayText: {
     fontWeight: 'bold',
-    color: '#FFD700', // Golden color for today's text
+    color: colors.warning,
   },
 });
 

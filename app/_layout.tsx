@@ -1,17 +1,21 @@
-import { Tabs } from "expo-router";
+import { Tabs, useRouter } from "expo-router";
 import React from "react";
 import { Text } from "react-native";
+import { ThemeProvider, useTheme } from "../lib/theme";
 
-export default function RootLayout() {
+function TabsLayout() {
+  const router = useRouter();
+  const { colors } = useTheme();
+
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: "#007aff",
-        tabBarInactiveTintColor: "#8e8e93",
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.secondaryText,
         tabBarStyle: {
-          backgroundColor: "#f8f9fa",
+          backgroundColor: colors.tabBarBackground,
           borderTopWidth: 1,
-          borderTopColor: "#e1e1e1",
+          borderTopColor: colors.border,
           height: 80,
           paddingBottom: 10,
           paddingTop: 10,
@@ -79,11 +83,31 @@ export default function RootLayout() {
         }}
       />
       <Tabs.Screen
+        name="settings"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
         name="components/RainbowBadge"
         options={{
           href: null,
         }}
       />
+      <Tabs.Screen
+        name="components/FloatingSettingsButton"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <ThemeProvider>
+      <TabsLayout />
+    </ThemeProvider>
   );
 }

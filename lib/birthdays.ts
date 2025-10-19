@@ -145,15 +145,20 @@ export function getUpcomingBirthdays(): {
 // Schedule notification for a birthday
 async function scheduleBirthdayNotification(birthday: Birthday) {
   try {
+    // Get the configured notification time (default 7 AM)
+    const savedTime = await AsyncStorage.getItem("notificationTime");
+    const notificationTime = savedTime || "07:00";
+    const [hours, minutes] = notificationTime.split(":").map(Number);
+    
     // Parse the birthday date
     const [year, month, day] = birthday.date.split("-").map(Number);
     
-    // Create notification date for this year at 9 AM
+    // Create notification date for this year at configured time
     const notificationDate = new Date();
     notificationDate.setFullYear(new Date().getFullYear());
     notificationDate.setMonth(month - 1);
     notificationDate.setDate(day);
-    notificationDate.setHours(9, 0, 0, 0); // 9 AM
+    notificationDate.setHours(hours, minutes, 0, 0);
     
     // If the birthday has already passed this year, schedule for next year
     if (notificationDate < new Date()) {

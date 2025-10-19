@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import { Picker } from "@react-native-picker/picker";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -24,6 +24,8 @@ import {
     saveSebastianBirthday,
     birthdays as sebastianBirthdays,
 } from "../lib/birthdays";
+import { useTheme } from "../lib/theme";
+import FloatingSettingsButton from "./components/FloatingSettingsButton";
 
 type Birthday = { name: string; date: string };
 type GroupedBirthdays = { [letter: string]: Birthday[] };
@@ -35,13 +37,21 @@ export default function AllBirthdays() {
   const [name, setName] = useState("");
   const [date, setDate] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  
+  // New date picker states - separate day, month, year
+  const [selectedDay, setSelectedDay] = useState<string>("");
+  const [selectedMonth, setSelectedMonth] = useState<string>("");
+  const [selectedYear, setSelectedYear] = useState<string>("");
+  
   const [editingBirthday, setEditingBirthday] = useState<Birthday | null>(null);
   const [editName, setEditName] = useState("");
   const [editDate, setEditDate] = useState("");
-  const [showEditDatePicker, setShowEditDatePicker] = useState(false);
-  const [editSelectedDate, setEditSelectedDate] = useState(new Date());
+  
+  // Edit date picker states
+  const [editSelectedDay, setEditSelectedDay] = useState<string>("");
+  const [editSelectedMonth, setEditSelectedMonth] = useState<string>("");
+  const [editSelectedYear, setEditSelectedYear] = useState<string>("");
+  
   const [expandedContact, setExpandedContact] = useState<Birthday | null>(null);
   const [contactNotes, setContactNotes] = useState<Record<string, string>>({});
   const [editingNotes, setEditingNotes] = useState<string>("");
@@ -50,6 +60,57 @@ export default function AllBirthdays() {
   const [sortMode, setSortMode] = useState<"alphabetical" | "upcoming">("alphabetical");
 
   const router = useRouter();
+  const { colors } = useTheme();
+
+  // Helper to generate years (from 1900 to current year)
+  const generateYears = () => {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let year = currentYear; year >= 1900; year--) {
+      years.push(year.toString());
+    }
+    return years;
+  };
+
+  // Helper to generate days based on selected month and year
+  const generateDays = (month: string, year: string) => {
+    if (!month || !year) return Array.from({ length: 31 }, (_, i) => (i + 1).toString().padStart(2, '0'));
+    
+    const daysInMonth = new Date(parseInt(year), parseInt(month), 0).getDate();
+    return Array.from({ length: daysInMonth }, (_, i) => (i + 1).toString().padStart(2, '0'));
+  };
+
+  // Month names for display
+  const months = [
+    { value: "01", label: "January" },
+    { value: "02", label: "February" },
+    { value: "03", label: "March" },
+    { value: "04", label: "April" },
+    { value: "05", label: "May" },
+    { value: "06", label: "June" },
+    { value: "07", label: "July" },
+    { value: "08", label: "August" },
+    { value: "09", label: "September" },
+    { value: "10", label: "October" },
+    { value: "11", label: "November" },
+    { value: "12", label: "December" },
+  ];
+
+  // Update date string when day/month/year changes
+  useEffect(() => {
+    if (selectedDay && selectedMonth && selectedYear) {
+      setDate(`${selectedYear}-${selectedMonth}-${selectedDay}`);
+    } else {
+      setDate("");
+    }
+  }, [selectedDay, selectedMonth, selectedYear]);
+
+  // Update edit date string when edit day/month/year changes
+  useEffect(() => {
+    if (editSelectedDay && editSelectedMonth && editSelectedYear) {
+      setEditDate(`${editSelectedYear}-${editSelectedMonth}-${editSelectedDay}`);
+    }
+  }, [editSelectedDay, editSelectedMonth, editSelectedYear]);
 
   useEffect(() => {
     const load = async () => {
@@ -135,6 +196,9 @@ export default function AllBirthdays() {
       
       setName("");
       setDate("");
+      setSelectedDay("");
+      setSelectedMonth("");
+      setSelectedYear("");
     } catch (e: any) {
       Alert.alert("Error", e.message || "Something went wrong.");
     }
@@ -207,20 +271,6 @@ export default function AllBirthdays() {
     );
   };
 
-  const onDateChange = (event: any, selectedDate?: Date) => {
-    setShowDatePicker(false);
-    if (selectedDate) {
-      setSelectedDate(selectedDate);
-      const year = selectedDate.getFullYear();
-      const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
-      const day = String(selectedDate.getDate()).padStart(2, '0');
-      setDate(`${year}-${month}-${day}`);
-    }
-  };
-
-  const showDatePickerModal = () => {
-    setShowDatePicker(true);
-  };
 
   const handleLongPress = (birthday: Birthday) => {
     // Check if this birthday is from the read-only list (Sebastian's birthdays)
@@ -233,6 +283,18 @@ export default function AllBirthdays() {
       return;
     }
 
+    const startEdit = () => {
+      setEditingBirthday(birthday);
+      setEditName(birthday.name);
+      setEditDate(birthday.date);
+      
+      // Split the date into parts for the pickers
+      const [year, month, day] = birthday.date.split("-");
+      setEditSelectedDay(day);
+      setEditSelectedMonth(month);
+      setEditSelectedYear(year);
+    };
+
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
         {
@@ -242,11 +304,7 @@ export default function AllBirthdays() {
         },
         (buttonIndex) => {
           if (buttonIndex === 1) {
-            // Edit
-            setEditingBirthday(birthday);
-            setEditName(birthday.name);
-            setEditDate(birthday.date);
-            setEditSelectedDate(new Date(birthday.date));
+            startEdit();
           } else if (buttonIndex === 2) {
             // Delete
             confirmDelete(birthday);
@@ -260,12 +318,7 @@ export default function AllBirthdays() {
         `What would you like to do with ${birthday.name}?`,
         [
           { text: "Cancel", style: "cancel" },
-          { text: "Edit", onPress: () => {
-            setEditingBirthday(birthday);
-            setEditName(birthday.name);
-            setEditDate(birthday.date);
-            setEditSelectedDate(new Date(birthday.date));
-          }},
+          { text: "Edit", onPress: startEdit },
           { text: "Delete", style: "destructive", onPress: () => confirmDelete(birthday) },
         ],
         { cancelable: true }
@@ -333,21 +386,9 @@ export default function AllBirthdays() {
     setEditingBirthday(null);
     setEditName("");
     setEditDate("");
-  };
-
-  const onEditDateChange = (event: any, selectedDate?: Date) => {
-    setShowEditDatePicker(false);
-    if (selectedDate) {
-      setEditSelectedDate(selectedDate);
-      const year = selectedDate.getFullYear();
-      const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
-      const day = String(selectedDate.getDate()).padStart(2, '0');
-      setEditDate(`${year}-${month}-${day}`);
-    }
-  };
-
-  const showEditDatePickerModal = () => {
-    setShowEditDatePicker(true);
+    setEditSelectedDay("");
+    setEditSelectedMonth("");
+    setEditSelectedYear("");
   };
 
   const handleContactPress = (contact: Birthday) => {
@@ -513,14 +554,16 @@ export default function AllBirthdays() {
   const groupedBirthdays = sortMode === "alphabetical" ? groupByLetter(filteredBirthdays) : {};
   const upcomingGroupedBirthdays = sortMode === "upcoming" ? groupByUpcomingMonth(filteredBirthdays) : {};
 
+  const styles = createStyles(colors);
+
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1 }}
+      style={{ flex: 1, backgroundColor: colors.background }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={80}
     >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-
+        <FloatingSettingsButton />
         
         <Text style={styles.title}>🎂 All Birthdays</Text>
         
@@ -815,20 +858,57 @@ export default function AllBirthdays() {
               onChangeText={setEditName}
             />
             
-            <Pressable style={styles.dateButton} onPress={showEditDatePickerModal}>
-              <Text style={styles.dateButtonText}>
-                {editDate ? `Selected: ${editDate}` : "Select Birthday Date"}
-              </Text>
-            </Pressable>
+            {/* Date Picker - Separate Day, Month, Year */}
+            <Text style={styles.dateLabel}>Birthday Date:</Text>
+            <View style={styles.datePickerContainer}>
+              {/* Month Picker */}
+              <View style={styles.pickerWrapper}>
+                <Text style={styles.pickerLabel}>Month</Text>
+                <Picker
+                  selectedValue={editSelectedMonth}
+                  onValueChange={setEditSelectedMonth}
+                  style={styles.picker}
+                >
+                  <Picker.Item label="Select" value="" />
+                  {months.map((month) => (
+                    <Picker.Item key={month.value} label={month.label} value={month.value} />
+                  ))}
+                </Picker>
+              </View>
 
-            {showEditDatePicker && (
-              <DateTimePicker
-                value={editSelectedDate}
-                mode="date"
-                display="default"
-                onChange={onEditDateChange}
-                maximumDate={new Date()}
-              />
+              {/* Day Picker */}
+              <View style={styles.pickerWrapper}>
+                <Text style={styles.pickerLabel}>Day</Text>
+                <Picker
+                  selectedValue={editSelectedDay}
+                  onValueChange={setEditSelectedDay}
+                  style={styles.picker}
+                >
+                  <Picker.Item label="Select" value="" />
+                  {generateDays(editSelectedMonth, editSelectedYear).map((day) => (
+                    <Picker.Item key={day} label={day} value={day} />
+                  ))}
+                </Picker>
+              </View>
+
+              {/* Year Picker */}
+              <View style={styles.pickerWrapper}>
+                <Text style={styles.pickerLabel}>Year</Text>
+                <Picker
+                  selectedValue={editSelectedYear}
+                  onValueChange={setEditSelectedYear}
+                  style={styles.picker}
+                >
+                  <Picker.Item label="Select" value="" />
+                  {generateYears().map((year) => (
+                    <Picker.Item key={year} label={year} value={year} />
+                  ))}
+                </Picker>
+              </View>
+            </View>
+            
+            {editDate && (
+              <Text style={styles.selectedDateText}>Selected: {editDate}</Text>
             )}
 
             <View style={styles.editButtons}>
@@ -851,21 +931,57 @@ export default function AllBirthdays() {
           onChangeText={setName}
         />
         
-        {/* Date Picker Button */}
-        <Pressable style={styles.dateButton} onPress={showDatePickerModal}>
-          <Text style={styles.dateButtonText}>
-            {date ? `Selected: ${date}` : "Select Birthday Date"}
-          </Text>
-        </Pressable>
+        {/* Date Picker - Separate Day, Month, Year */}
+        <Text style={styles.dateLabel}>Birthday Date:</Text>
+        <View style={styles.datePickerContainer}>
+          {/* Month Picker */}
+          <View style={styles.pickerWrapper}>
+            <Text style={styles.pickerLabel}>Month</Text>
+            <Picker
+              selectedValue={selectedMonth}
+              onValueChange={setSelectedMonth}
+              style={styles.picker}
+            >
+              <Picker.Item label="Select" value="" />
+              {months.map((month) => (
+                <Picker.Item key={month.value} label={month.label} value={month.value} />
+              ))}
+            </Picker>
+          </View>
 
-        {showDatePicker && (
-          <DateTimePicker
-            value={selectedDate}
-            mode="date"
-            display="default"
-            onChange={onDateChange}
-            maximumDate={new Date()}
-          />
+          {/* Day Picker */}
+          <View style={styles.pickerWrapper}>
+            <Text style={styles.pickerLabel}>Day</Text>
+            <Picker
+              selectedValue={selectedDay}
+              onValueChange={setSelectedDay}
+              style={styles.picker}
+            >
+              <Picker.Item label="Select" value="" />
+              {generateDays(selectedMonth, selectedYear).map((day) => (
+                <Picker.Item key={day} label={day} value={day} />
+              ))}
+            </Picker>
+          </View>
+
+          {/* Year Picker */}
+          <View style={styles.pickerWrapper}>
+            <Text style={styles.pickerLabel}>Year</Text>
+            <Picker
+              selectedValue={selectedYear}
+              onValueChange={setSelectedYear}
+              style={styles.picker}
+            >
+              <Picker.Item label="Select" value="" />
+              {generateYears().map((year) => (
+                <Picker.Item key={year} label={year} value={year} />
+              ))}
+            </Picker>
+          </View>
+        </View>
+        
+        {date && (
+          <Text style={styles.selectedDateText}>Selected: {date}</Text>
         )}
 
         {isSebastian ? (
@@ -916,68 +1032,73 @@ export default function AllBirthdays() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { padding: 20, backgroundColor: "#fff", flexGrow: 1 },
+const createStyles = (colors: any) => StyleSheet.create({
+  container: { padding: 20, backgroundColor: colors.background, flexGrow: 1, paddingTop: 70 },
   title: {
     fontSize: 26,
     fontWeight: "bold",
     textAlign: "center",
     marginBottom: 20,
+    color: colors.text,
   },
   hintText: {
     fontSize: 14,
     textAlign: "center",
-    color: "#666",
+    color: colors.secondaryText,
     marginBottom: 15,
     fontStyle: "italic",
   },
-  subtitle: { fontSize: 20, marginTop: 30, marginBottom: 10 },
+  subtitle: { fontSize: 20, marginTop: 30, marginBottom: 10, color: colors.text },
   searchInput: {
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: colors.border,
     padding: 12,
     borderRadius: 8,
     marginBottom: 20,
     fontSize: 16,
-    backgroundColor: "#f8f8f8",
+    backgroundColor: colors.cardBackground,
+    color: colors.text,
   },
   cardContainer: {
     marginBottom: 10,
   },
   card: {
-    backgroundColor: "#f5f5f5",
+    backgroundColor: colors.cardBackground,
     padding: 15,
     borderRadius: 10,
     borderLeftWidth: 4,
-    borderLeftColor: "#007aff",
+    borderLeftColor: colors.primary,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   cardPressed: {
     opacity: 0.7,
     transform: [{ scale: 0.98 }],
   },
-  name: { fontSize: 18, fontWeight: "bold", color: "#333" },
-  dateText: { fontSize: 14, color: "#666", marginTop: 4 },
+  name: { fontSize: 18, fontWeight: "bold", color: colors.text },
+  dateText: { fontSize: 14, color: colors.secondaryText, marginTop: 4 },
   input: {
     borderWidth: 1,
-    borderColor: "#ccc",
+    borderColor: colors.border,
     padding: 12,
     borderRadius: 8,
     marginBottom: 10,
     fontSize: 16,
-    backgroundColor: "#fff",
+    backgroundColor: colors.background,
+    color: colors.text,
   },
   dateButton: {
     borderWidth: 1,
-    borderColor: "#007aff",
+    borderColor: colors.primary,
     padding: 12,
     borderRadius: 8,
     marginBottom: 15,
-    backgroundColor: "#f0f8ff",
+    backgroundColor: colors.cardBackground,
   },
   dateButtonText: {
     fontSize: 16,
     textAlign: "center",
-    color: "#007aff",
+    color: colors.primary,
     fontWeight: "500",
   },
   letter: {
@@ -985,22 +1106,24 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginTop: 20,
     marginBottom: 8,
-    color: "#444",
+    color: colors.text,
   },
   backButton: {
-    backgroundColor: "#f0f0f0",
+    backgroundColor: colors.cardBackground,
     padding: 15,
     borderRadius: 10,
     alignItems: "center",
     marginTop: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   backButtonText: {
     fontSize: 16,
-    color: "#333",
+    color: colors.text,
     fontWeight: "500",
   },
   editModal: {
-    backgroundColor: "#fff",
+    backgroundColor: colors.background,
     padding: 20,
     borderRadius: 10,
     marginTop: 20,
@@ -1011,13 +1134,14 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
     borderWidth: 1,
-    borderColor: "#e0e0e0",
+    borderColor: colors.border,
   },
   editTitle: {
     fontSize: 22,
     fontWeight: "bold",
     textAlign: "center",
     marginBottom: 15,
+    color: colors.text,
   },
   editButtons: {
     flexDirection: "row",
@@ -1032,9 +1156,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   saveButton: {
-    backgroundColor: "#007aff",
+    backgroundColor: colors.primary,
     borderWidth: 1,
-    borderColor: "#007aff",
+    borderColor: colors.primary,
   },
   saveButtonText: {
     color: "#fff",
@@ -1042,12 +1166,12 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   cancelButton: {
-    backgroundColor: "#f0f0f0",
+    backgroundColor: colors.cardBackground,
     borderWidth: 1,
-    borderColor: "#ccc",
+    borderColor: colors.border,
   },
   cancelButtonText: {
-    color: "#333",
+    color: colors.text,
     fontSize: 16,
     fontWeight: "500",
   },
@@ -1055,36 +1179,37 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   expandedCard: {
-    borderColor: "#007aff",
-    backgroundColor: "#f0f8ff",
+    borderColor: colors.primary,
+    backgroundColor: colors.cardBackground,
   },
   expandIndicator: {
     fontSize: 12,
-    color: "#007aff",
+    color: colors.primary,
     textAlign: "center",
     marginTop: 5,
   },
   notesContainer: {
-    backgroundColor: "#f8f9fa",
+    backgroundColor: colors.cardBackground,
     padding: 15,
     borderRadius: 8,
     marginTop: 5,
     borderWidth: 1,
-    borderColor: "#e9ecef",
+    borderColor: colors.border,
   },
   notesLabel: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#333",
+    color: colors.text,
     marginBottom: 8,
   },
   notesInput: {
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: colors.border,
     padding: 10,
     borderRadius: 6,
     fontSize: 14,
-    backgroundColor: "#fff",
+    backgroundColor: colors.background,
+    color: colors.text,
     minHeight: 80,
     textAlignVertical: "top",
   },
@@ -1101,9 +1226,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   saveNotesButton: {
-    backgroundColor: "#28a745",
+    backgroundColor: colors.success,
     borderWidth: 1,
-    borderColor: "#28a745",
+    borderColor: colors.success,
   },
   saveNotesButtonText: {
     color: "#fff",
@@ -1111,12 +1236,12 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   cancelNotesButton: {
-    backgroundColor: "#f0f0f0",
+    backgroundColor: colors.cardBackground,
     borderWidth: 1,
-    borderColor: "#ccc",
+    borderColor: colors.border,
   },
   cancelNotesButtonText: {
-    color: "#333",
+    color: colors.text,
     fontSize: 14,
     fontWeight: "500",
   },
@@ -1124,21 +1249,21 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   categoryButton: {
-    backgroundColor: "#f0f0f0",
+    backgroundColor: colors.cardBackground,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
     marginRight: 8,
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: colors.border,
   },
   selectedCategoryButton: {
-    backgroundColor: "#007aff",
-    borderColor: "#007aff",
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   categoryButtonText: {
     fontSize: 14,
-    color: "#333",
+    color: colors.text,
     fontWeight: "500",
   },
   selectedCategoryButtonText: {
@@ -1153,7 +1278,7 @@ const styles = StyleSheet.create({
   },
   ageText: {
     fontSize: 12,
-    color: "#666",
+    color: colors.secondaryText,
     fontStyle: "italic",
   },
   categoryDisplay: {
@@ -1161,8 +1286,8 @@ const styles = StyleSheet.create({
   },
   categoryLabel: {
     fontSize: 11,
-    color: "#007aff",
-    backgroundColor: "#f0f8ff",
+    color: colors.primary,
+    backgroundColor: colors.cardBackground,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 10,
@@ -1176,20 +1301,20 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   categoryOption: {
-    backgroundColor: "#f0f0f0",
+    backgroundColor: colors.cardBackground,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 15,
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: colors.border,
   },
   selectedCategoryOption: {
-    backgroundColor: "#007aff",
-    borderColor: "#007aff",
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   categoryOptionText: {
     fontSize: 12,
-    color: "#333",
+    color: colors.text,
     fontWeight: "500",
   },
   selectedCategoryOptionText: {
@@ -1205,7 +1330,7 @@ const styles = StyleSheet.create({
   sortLabel: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#333",
+    color: colors.text,
     marginRight: 10,
   },
   sortButtons: {
@@ -1213,20 +1338,20 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   sortButton: {
-    backgroundColor: "#f0f0f0",
+    backgroundColor: colors.cardBackground,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: colors.border,
   },
   selectedSortButton: {
-    backgroundColor: "#007aff",
-    borderColor: "#007aff",
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   sortButtonText: {
     fontSize: 14,
-    color: "#333",
+    color: colors.text,
     fontWeight: "500",
   },
   selectedSortButtonText: {
@@ -1234,20 +1359,60 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   todayCard: {
-    backgroundColor: "#fff3cd",
-    borderLeftColor: "#ffc107",
+    backgroundColor: colors.warning + '20',
+    borderLeftColor: colors.warning,
     borderLeftWidth: 6,
   },
   daysUntilText: {
     fontSize: 14,
-    color: "#007aff",
+    color: colors.primary,
     fontWeight: "600",
     marginTop: 4,
   },
   todayText: {
-    color: "#d63384",
+    color: colors.danger,
     fontSize: 15,
     fontWeight: "700",
+  },
+  dateLabel: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: colors.text,
+    marginBottom: 10,
+  },
+  datePickerContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 10,
+    marginBottom: 15,
+  },
+  pickerWrapper: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    backgroundColor: colors.background,
+    overflow: "hidden",
+  },
+  pickerLabel: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: colors.secondaryText,
+    textAlign: "center",
+    paddingTop: 5,
+    paddingBottom: 2,
+    backgroundColor: colors.cardBackground,
+  },
+  picker: {
+    height: 150,
+    color: colors.text,
+  },
+  selectedDateText: {
+    fontSize: 14,
+    color: colors.primary,
+    textAlign: "center",
+    marginBottom: 10,
+    fontWeight: "500",
   },
 
 });

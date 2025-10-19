@@ -2,10 +2,12 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useTheme } from "../lib/theme";
 
 export default function GamesScreen() {
   const [username, setUsername] = useState("");
   const router = useRouter();
+  const { colors } = useTheme();
 
   const loadUserData = useCallback(async () => {
     try {
@@ -32,11 +34,6 @@ export default function GamesScreen() {
     }, [loadUserData])
   );
 
-  const handleLogout = async () => {
-    await AsyncStorage.removeItem("userName");
-    router.replace("/welcome");
-  };
-
   const handleSeeYourKitty = () => {
     router.push("/kitty");
   };
@@ -44,6 +41,8 @@ export default function GamesScreen() {
   const handlePlayNHIE = () => {
     router.push("/nhie");
   };
+
+  const styles = createStyles(colors);
 
   return (
     <View style={styles.container}>
@@ -85,19 +84,15 @@ export default function GamesScreen() {
         </View>
       </View>
 
-      {/* Logout Button */}
-      <Pressable onPress={handleLogout} style={styles.logoutContainer}>
-        <Text style={styles.logout}>🔓 Logout</Text>
-      </Pressable>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     padding: 20,
-    paddingTop: 60,
-    backgroundColor: "#fff",
+    paddingTop: 20,
+    backgroundColor: colors.background,
     flex: 1,
   },
   greeting: {
@@ -105,19 +100,21 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginBottom: 10,
     textAlign: "center",
+    color: colors.text,
   },
   title: {
     fontSize: 26,
     fontWeight: "bold",
     marginBottom: 30,
     textAlign: "center",
+    color: colors.text,
   },
   gamesContainer: {
     flex: 1,
     gap: 20,
   },
   gameButton: {
-    backgroundColor: "#f8f9fa",
+    backgroundColor: colors.cardBackground,
     padding: 20,
     borderRadius: 15,
     alignItems: "center",
@@ -130,7 +127,9 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
     borderLeftWidth: 4,
-    borderLeftColor: "#007aff",
+    borderLeftColor: colors.primary,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   gameButtonEmoji: {
     fontSize: 48,
@@ -139,23 +138,25 @@ const styles = StyleSheet.create({
   gameButtonTitle: {
     fontSize: 20,
     fontWeight: "bold",
-    color: "#333",
+    color: colors.text,
     marginBottom: 8,
   },
   gameButtonDescription: {
     fontSize: 14,
-    color: "#666",
+    color: colors.secondaryText,
     textAlign: "center",
     lineHeight: 20,
   },
   comingSoonContainer: {
-    backgroundColor: "#f0f0f0",
+    backgroundColor: colors.cardBackground,
     padding: 20,
     borderRadius: 15,
     alignItems: "center",
     opacity: 0.7,
     borderLeftWidth: 4,
-    borderLeftColor: "#ccc",
+    borderLeftColor: colors.border,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   comingSoonEmoji: {
     fontSize: 48,
@@ -164,25 +165,14 @@ const styles = StyleSheet.create({
   comingSoonTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#666",
+    color: colors.secondaryText,
     marginBottom: 8,
   },
   comingSoonDescription: {
     fontSize: 14,
-    color: "#999",
+    color: colors.secondaryText,
     textAlign: "center",
     lineHeight: 20,
     fontStyle: "italic",
-  },
-  logoutContainer: {
-    marginTop: 20,
-    padding: 10,
-    alignItems: "center",
-  },
-  logout: {
-    fontSize: 18,
-    textAlign: "center",
-    color: "red",
-    fontWeight: "bold",
   },
 });
