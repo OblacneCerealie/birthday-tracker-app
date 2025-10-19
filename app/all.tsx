@@ -572,7 +572,7 @@ export default function AllBirthdays() {
         {/* Search Bar */}
         <TextInput
           placeholder="Search birthdays..."
-          placeholderTextColor="#666"
+          placeholderTextColor={colors.secondaryText}
           style={styles.searchInput}
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -710,7 +710,7 @@ export default function AllBirthdays() {
                       <Text style={styles.notesLabel}>📝 Notes:</Text>
                       <TextInput
                         placeholder="Add notes about this person..."
-                        placeholderTextColor="#666"
+                        placeholderTextColor={colors.secondaryText}
                         style={styles.notesInput}
                         value={editingNotes}
                         onChangeText={setEditingNotes}
@@ -815,7 +815,7 @@ export default function AllBirthdays() {
                         <Text style={styles.notesLabel}>📝 Notes:</Text>
                         <TextInput
                           placeholder="Add notes about this person..."
-                          placeholderTextColor="#666"
+                          placeholderTextColor={colors.secondaryText}
                           style={styles.notesInput}
                           value={editingNotes}
                           onChangeText={setEditingNotes}
@@ -852,7 +852,7 @@ export default function AllBirthdays() {
             
             <TextInput
               placeholder="Name"
-              placeholderTextColor="#222"
+              placeholderTextColor={colors.secondaryText}
               style={styles.input}
               value={editName}
               onChangeText={setEditName}
@@ -869,9 +869,9 @@ export default function AllBirthdays() {
                   onValueChange={setEditSelectedMonth}
                   style={styles.picker}
                 >
-                  <Picker.Item label="Select" value="" />
+                  <Picker.Item label="Select" value="" color={colors.text} />
                   {months.map((month) => (
-                    <Picker.Item key={month.value} label={month.label} value={month.value} />
+                    <Picker.Item key={month.value} label={month.label} value={month.value} color={colors.text} />
                   ))}
                 </Picker>
               </View>
@@ -884,9 +884,9 @@ export default function AllBirthdays() {
                   onValueChange={setEditSelectedDay}
                   style={styles.picker}
                 >
-                  <Picker.Item label="Select" value="" />
+                  <Picker.Item label="Select" value="" color={colors.text} />
                   {generateDays(editSelectedMonth, editSelectedYear).map((day) => (
-                    <Picker.Item key={day} label={day} value={day} />
+                    <Picker.Item key={day} label={day} value={day} color={colors.text} />
                   ))}
                 </Picker>
               </View>
@@ -899,9 +899,9 @@ export default function AllBirthdays() {
                   onValueChange={setEditSelectedYear}
                   style={styles.picker}
                 >
-                  <Picker.Item label="Select" value="" />
+                  <Picker.Item label="Select" value="" color={colors.text} />
                   {generateYears().map((year) => (
-                    <Picker.Item key={year} label={year} value={year} />
+                    <Picker.Item key={year} label={year} value={year} color={colors.text} />
                   ))}
                 </Picker>
               </View>
@@ -925,7 +925,7 @@ export default function AllBirthdays() {
         <Text style={styles.subtitle}>➕ Add New Birthday</Text>
         <TextInput
           placeholder="Name"
-          placeholderTextColor="#222"
+          placeholderTextColor={colors.secondaryText}
           style={styles.input}
           value={name}
           onChangeText={setName}
@@ -942,9 +942,9 @@ export default function AllBirthdays() {
               onValueChange={setSelectedMonth}
               style={styles.picker}
             >
-              <Picker.Item label="Select" value="" />
+              <Picker.Item label="Select" value="" color={colors.text} />
               {months.map((month) => (
-                <Picker.Item key={month.value} label={month.label} value={month.value} />
+                <Picker.Item key={month.value} label={month.label} value={month.value} color={colors.text} />
               ))}
             </Picker>
           </View>
@@ -957,9 +957,9 @@ export default function AllBirthdays() {
               onValueChange={setSelectedDay}
               style={styles.picker}
             >
-              <Picker.Item label="Select" value="" />
+              <Picker.Item label="Select" value="" color={colors.text} />
               {generateDays(selectedMonth, selectedYear).map((day) => (
-                <Picker.Item key={day} label={day} value={day} />
+                <Picker.Item key={day} label={day} value={day} color={colors.text} />
               ))}
             </Picker>
           </View>
@@ -972,9 +972,9 @@ export default function AllBirthdays() {
               onValueChange={setSelectedYear}
               style={styles.picker}
             >
-              <Picker.Item label="Select" value="" />
+              <Picker.Item label="Select" value="" color={colors.text} />
               {generateYears().map((year) => (
-                <Picker.Item key={year} label={year} value={year} />
+                <Picker.Item key={year} label={year} value={year} color={colors.text} />
               ))}
             </Picker>
           </View>
